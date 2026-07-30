@@ -93,6 +93,7 @@ function normalizeManagerResponse(raw: unknown): ManagerResponse | null {
     price,
     vendor,
     respondedBy,
+    sheetSize: String(value.sheetSize ?? "").trim(),
     respondedAt: String(value.respondedAt ?? new Date().toISOString()),
   };
 }
@@ -478,6 +479,7 @@ export async function updateRequest(
           price: reply.price.trim(),
           vendor: reply.vendor.trim(),
           respondedBy: reply.respondedBy.trim(),
+          sheetSize: (reply.sheetSize ?? "").trim(),
           respondedAt: currentItem.managerResponse?.respondedAt ?? now,
         },
       };

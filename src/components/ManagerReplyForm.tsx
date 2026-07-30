@@ -22,6 +22,7 @@ export type ManagerReplyPayload = {
     price: string;
     vendor: string;
     respondedBy: string;
+    sheetSize: string;
   };
 };
 
@@ -45,6 +46,7 @@ export function ManagerReplyForm({
   const [leadTime, setLeadTime] = useState(existing?.leadTime ?? "");
   const [price, setPrice] = useState(existing?.price ?? "");
   const [vendor, setVendor] = useState(existing?.vendor ?? "");
+  const [sheetSize, setSheetSize] = useState(existing?.sheetSize ?? "");
   const [respondedBy, setRespondedBy] = useState(
     existing?.respondedBy ?? defaultRespondedBy,
   );
@@ -53,6 +55,7 @@ export function ManagerReplyForm({
   );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const needsSheetSize = item.productType === "material";
 
   useEffect(() => {
     const next = item.managerResponse;
@@ -60,6 +63,7 @@ export function ManagerReplyForm({
     setLeadTime(next?.leadTime ?? "");
     setPrice(next?.price ?? "");
     setVendor(next?.vendor ?? "");
+    setSheetSize(next?.sheetSize ?? "");
     setRespondedBy(next?.respondedBy ?? defaultRespondedBy);
     setStatus(request.status === "pending" ? "approved" : request.status);
   }, [item, request.status, defaultRespondedBy]);
@@ -70,6 +74,10 @@ export function ManagerReplyForm({
     setError(null);
 
     try {
+      if (needsSheetSize && !sheetSize.trim()) {
+        throw new Error("Sheet size is required for material replies");
+      }
+
       await onSubmit(request.id, {
         itemId: item.id,
         status,
@@ -79,6 +87,7 @@ export function ManagerReplyForm({
           price,
           vendor,
           respondedBy,
+          sheetSize: sheetSize.trim(),
         },
       });
     } catch (err) {
@@ -166,6 +175,27 @@ export function ManagerReplyForm({
           />
         </label>
 
+        {needsSheetSize ? (
+          <label className="field field-span-2">
+            <span>Sheet size</span>
+            <input
+              required
+              value={sheetSize}
+              onChange={(e) => setSheetSize(e.target.value)}
+              placeholder="e.g. 4x8, 5x10, 49 x 97"
+            />
+          </label>
+        ) : (
+          <label className="field field-span-2">
+            <span>Sheet size (optional)</span>
+            <input
+              value={sheetSize}
+              onChange={(e) => setSheetSize(e.target.value)}
+              placeholder="e.g. 4x8 if relevant"
+            />
+          </label>
+        )}
+
         <label className="field">
           <span>Manager name</span>
           <input
@@ -231,6 +261,12 @@ export function ManagerResponseSummary({
           <dt>Responded date</dt>
           <dd>{formatLockedDate(response.respondedAt)}</dd>
         </div>
+        {response.sheetSize ? (
+          <div>
+            <dt>Sheet size</dt>
+            <dd>{response.sheetSize}</dd>
+          </div>
+        ) : null}
         <div>
           <dt>Lead time</dt>
           <dd>{response.leadTime}</dd>

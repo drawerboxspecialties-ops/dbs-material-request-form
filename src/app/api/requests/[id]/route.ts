@@ -132,6 +132,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     const price = String(response.price ?? "").trim();
     const vendor = String(response.vendor ?? "").trim();
     const respondedBy = String(response.respondedBy ?? "").trim();
+    const sheetSize = String(response.sheetSize ?? "").trim();
 
     if (!isAvailability(availability)) {
       return NextResponse.json(
@@ -158,6 +159,7 @@ export async function PATCH(request: Request, context: RouteContext) {
         price,
         vendor,
         respondedBy,
+        sheetSize,
       },
     };
   }

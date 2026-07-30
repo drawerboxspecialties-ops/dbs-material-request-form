@@ -45,6 +45,8 @@ export type ManagerResponse = {
   price: string;
   vendor: string;
   respondedBy: string;
+  /** Sheet size noted by manager (mainly for material). */
+  sheetSize: string;
   respondedAt: string;
 };
 
@@ -126,6 +128,7 @@ export type UpdateMaterialRequestInput = {
       price: string;
       vendor: string;
       respondedBy: string;
+      sheetSize?: string;
     };
   };
 };
