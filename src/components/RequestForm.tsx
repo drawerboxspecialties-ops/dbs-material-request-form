@@ -159,13 +159,6 @@ export function RequestForm({
     onSeedApplied?.();
   }, [seed, onSeedApplied]);
 
-  const typeSummary = useMemo(() => {
-    const types = new Set(items.map((item) => item.productType));
-    return Array.from(types)
-      .map((type) => PRODUCT_TYPE_LABELS[type])
-      .join(" · ");
-  }, [items]);
-
   const materialOptions = useMemo(
     () =>
       items
@@ -317,7 +310,6 @@ export function RequestForm({
           <span>1</span>
           <div>
             <h3>Customer &amp; PO</h3>
-            <p>Job this request is for.</p>
           </div>
         </div>
 
@@ -349,7 +341,6 @@ export function RequestForm({
           <span>2</span>
           <div>
             <h3>Requester</h3>
-            <p>Who is asking.</p>
           </div>
         </div>
 
@@ -381,11 +372,6 @@ export function RequestForm({
           <span>3</span>
           <div>
             <h3>Products</h3>
-            <p>
-              Mix types in one request · {items.length} line
-              {items.length === 1 ? "" : "s"}
-              {typeSummary ? ` · ${typeSummary}` : ""}
-            </p>
           </div>
         </div>
 
@@ -439,8 +425,7 @@ export function RequestForm({
                         })
                       }
                     >
-                      <strong>{PRODUCT_TYPE_LABELS[type]}</strong>
-                      <em>{PRODUCT_UNITS[type]}</em>
+                      {PRODUCT_TYPE_LABELS[type]}
                     </button>
                   ))}
                 </div>
@@ -564,7 +549,6 @@ export function RequestForm({
                 }
               >
                 + {PRODUCT_TYPE_LABELS[type]}
-                <em>{PRODUCT_UNITS[type]}</em>
               </button>
             ))}
           </div>
@@ -576,7 +560,6 @@ export function RequestForm({
           <span>4</span>
           <div>
             <h3>Notes</h3>
-            <p>Optional.</p>
           </div>
         </div>
         <label className="field">
@@ -591,14 +574,6 @@ export function RequestForm({
       </section>
 
       <div className="form-footer sticky-actions">
-        <div>
-          <strong>Ready to send?</strong>
-          <p>
-            {customer.trim() || "Customer"} · {poNumber.trim() || "PO"} ·{" "}
-            {items.length} product line{items.length === 1 ? "" : "s"}
-            {typeSummary ? ` (${typeSummary})` : ""}
-          </p>
-        </div>
         <div className="form-action-row">
           <button
             type="button"

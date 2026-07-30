@@ -267,7 +267,6 @@ export function LiveApp() {
           <div className="panel-heading">
             <div>
               <h2>New request</h2>
-              <p>Compose and submit without leaving the board.</p>
             </div>
           </div>
           <RequestForm
