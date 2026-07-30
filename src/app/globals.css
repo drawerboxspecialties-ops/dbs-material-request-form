@@ -616,6 +616,94 @@ textarea {
   background: rgba(10, 84, 112, 0.08);
 }
 
+.multi-type-callout {
+  margin: 0 0 0.9rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: 14px;
+  border: 1px solid rgba(10, 84, 112, 0.16);
+  background: rgba(10, 84, 112, 0.05);
+}
+
+.multi-type-callout strong {
+  display: block;
+  font-family: var(--font-display);
+  color: var(--brand-deep);
+}
+
+.multi-type-callout p {
+  margin: 0.25rem 0 0;
+  color: var(--ink-muted);
+  font-size: 0.92rem;
+}
+
+.add-item-panel {
+  margin-top: 0.95rem;
+  padding: 0.9rem;
+  border-radius: 14px;
+  border: 1px dashed rgba(10, 84, 112, 0.35);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.add-item-label {
+  margin: 0 0 0.55rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.quick-add-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.quick-add-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--brand-deep);
+  padding: 0.7rem 0.75rem;
+  cursor: pointer;
+  font-weight: 700;
+  text-align: left;
+  transition:
+    transform 140ms var(--ease),
+    border-color 140ms ease,
+    background 140ms ease;
+}
+
+.quick-add-btn em {
+  font-style: normal;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+
+.quick-add-btn:hover {
+  transform: translateY(-1px);
+}
+
+.quick-add-btn.product-material:hover {
+  border-color: rgba(10, 84, 112, 0.35);
+  background: rgba(10, 84, 112, 0.06);
+}
+
+.quick-add-btn.product-hardware:hover {
+  border-color: rgba(178, 119, 22, 0.35);
+  background: rgba(178, 119, 22, 0.08);
+}
+
+.quick-add-btn.product-edgeband:hover {
+  border-color: rgba(24, 120, 108, 0.35);
+  background: rgba(24, 120, 108, 0.08);
+}
+
 .link-btn {
   color: var(--danger);
   font-size: 0.85rem;
@@ -1215,6 +1303,7 @@ textarea {
   .view-switch,
   .form-grid,
   .product-type-row,
+  .quick-add-row,
   .manager-facts,
   .manager-reply-grid,
   .date-locks,

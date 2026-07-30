@@ -297,10 +297,19 @@ export function RequestForm({ onCreated }: RequestFormProps) {
           <div>
             <h3>Products needed</h3>
             <p>
+              Mix Material, Hardware, and Edgeband in this same request ·{" "}
               {items.length} line{items.length === 1 ? "" : "s"}
               {typeSummary ? ` · ${typeSummary}` : ""}
             </p>
           </div>
+        </div>
+
+        <div className="multi-type-callout">
+          <strong>One request, multiple product types</strong>
+          <p>
+            Add as many lines as you need. Each line can be Material (sheets),
+            Hardware (pcs), or Edgeband (feet).
+          </p>
         </div>
 
         <div className="draft-items">
@@ -465,13 +474,24 @@ export function RequestForm({ onCreated }: RequestFormProps) {
           })}
         </div>
 
-        <button
-          type="button"
-          className="add-item-btn"
-          onClick={() => setItems((current) => [...current, newDraftItem()])}
-        >
-          + Add another product
-        </button>
+        <div className="add-item-panel">
+          <p className="add-item-label">Add another line</p>
+          <div className="quick-add-row">
+            {PRODUCT_TYPES.map((type) => (
+              <button
+                key={type}
+                type="button"
+                className={`quick-add-btn product-${type}`}
+                onClick={() =>
+                  setItems((current) => [...current, newDraftItem(type)])
+                }
+              >
+                + {PRODUCT_TYPE_LABELS[type]}
+                <em>{PRODUCT_UNITS[type]}</em>
+              </button>
+            ))}
+          </div>
+        </div>
       </section>
 
       <section className="form-section">
@@ -498,7 +518,8 @@ export function RequestForm({ onCreated }: RequestFormProps) {
           <strong>Ready to send?</strong>
           <p>
             {customer.trim() || "Customer"} · {poNumber.trim() || "PO"} ·{" "}
-            {items.length} product{items.length === 1 ? "" : "s"}
+            {items.length} product line{items.length === 1 ? "" : "s"}
+            {typeSummary ? ` (${typeSummary})` : ""}
           </p>
         </div>
         <button className="submit-btn" type="submit" disabled={submitting}>

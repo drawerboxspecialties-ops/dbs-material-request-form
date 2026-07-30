@@ -195,7 +195,7 @@ export function LiveApp() {
 
       <p className="page-lede">
         {view === "request"
-          ? "Start with customer and PO, then add Material, Hardware, or Edgeband. Material needs core and color. Edgeband must match a sheet."
+          ? "Start with customer and PO, then mix Material, Hardware, and Edgeband in one request. Material needs core and color. Edgeband must match a sheet."
           : "Everyone sees updates instantly. Filter by customer or PO, then managers reply per product with availability, lead time, price, and vendor."}
       </p>
 
@@ -208,7 +208,10 @@ export function LiveApp() {
             <div className="panel-heading">
               <div>
                 <h2>Create request</h2>
-                <p>Add every product you need, then submit once.</p>
+                <p>
+                  One submission can include Material, Hardware, and Edgeband
+                  together.
+                </p>
               </div>
             </div>
             <RequestForm
