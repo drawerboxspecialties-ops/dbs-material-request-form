@@ -190,7 +190,7 @@ export function RequestBoard({
 
   async function handleDelete(request: MaterialRequest) {
     if (!managerUnlocked) {
-      setDeleteError("Unlock manager access to delete requests.");
+      setDeleteError("Unlock manager access in Detail to delete requests.");
       return;
     }
     const label = `${request.customer || "Untitled"} / PO ${request.poNumber || "—"}`;
@@ -275,47 +275,6 @@ export function RequestBoard({
               placeholder="Search customer, PO, product…"
             />
           </label>
-
-          <div className={`manager-gate${managerUnlocked ? " unlocked" : ""}`}>
-            {managerUnlocked ? (
-              <div className="manager-gate-row">
-                <p>
-                  <strong>Manager mode on</strong>
-                  <span>Edit, reply, status, and delete unlocked.</span>
-                </p>
-                <button type="button" className="ghost-btn" onClick={lockManager}>
-                  Lock
-                </button>
-              </div>
-            ) : (
-              <form className="manager-gate-form" onSubmit={unlockManager}>
-                <div>
-                  <strong>Manager access</strong>
-                  <p>Unlock to delete or reply from the queue.</p>
-                </div>
-                <label className="field">
-                  <span>Password</span>
-                  <input
-                    type="password"
-                    autoComplete="current-password"
-                    value={passwordDraft}
-                    onChange={(e) => setPasswordDraft(e.target.value)}
-                    placeholder="Manager password"
-                    required
-                  />
-                </label>
-                <button className="reply-btn" type="submit" disabled={unlocking}>
-                  {unlocking ? "Checking…" : "Unlock"}
-                </button>
-                {unlockError ? (
-                  <p className="form-message error">{unlockError}</p>
-                ) : null}
-              </form>
-            )}
-          </div>
-          {deleteError ? (
-            <p className="form-message error">{deleteError}</p>
-          ) : null}
         </div>
 
         {filtered.length === 0 ? (
@@ -416,7 +375,7 @@ export function RequestBoard({
                         title={
                           managerUnlocked
                             ? "Delete request"
-                            : "Unlock manager access to delete"
+                            : "Unlock manager access in Detail to delete"
                         }
                         onClick={() => {
                           void handleDelete(request);
@@ -441,12 +400,48 @@ export function RequestBoard({
             <h2>Detail</h2>
             <p>Reply, edit, and update status for the selected request.</p>
           </div>
+        </div>
+
+        <div className={`manager-gate${managerUnlocked ? " unlocked" : ""}`}>
           {managerUnlocked ? (
-            <span className="badge availability-available">Manager on</span>
+            <div className="manager-gate-row">
+              <p>
+                <strong>Manager mode on</strong>
+                <span>You can reply, update status, and delete.</span>
+              </p>
+              <button type="button" className="ghost-btn" onClick={lockManager}>
+                Lock
+              </button>
+            </div>
           ) : (
-            <span className="badge awaiting-reply">Manager locked</span>
+            <form className="manager-gate-form" onSubmit={unlockManager}>
+              <div>
+                <strong>Manager access</strong>
+                <p>Enter password to reply, change status, or delete.</p>
+              </div>
+              <label className="field">
+                <span>Password</span>
+                <input
+                  type="password"
+                  autoComplete="current-password"
+                  value={passwordDraft}
+                  onChange={(e) => setPasswordDraft(e.target.value)}
+                  placeholder="Manager password"
+                  required
+                />
+              </label>
+              <button className="reply-btn" type="submit" disabled={unlocking}>
+                {unlocking ? "Checking…" : "Unlock"}
+              </button>
+              {unlockError ? (
+                <p className="form-message error">{unlockError}</p>
+              ) : null}
+            </form>
           )}
         </div>
+        {deleteError ? (
+          <p className="form-message error">{deleteError}</p>
+        ) : null}
 
         {!selected ? (
           <div className="empty-state compact">
@@ -550,7 +545,7 @@ export function RequestBoard({
                 title={
                   managerUnlocked
                     ? "Delete request"
-                    : "Unlock manager access in Queue to delete"
+                    : "Unlock manager access above to delete"
                 }
                 onClick={() => {
                   void handleDelete(selected);
