@@ -136,11 +136,11 @@ export function LiveApp() {
   }, [requests]);
 
   const handleStatusChange = useCallback(
-    async (id: string, status: RequestStatus, managerPassword: string) => {
+    async (id: string, status: RequestStatus) => {
       const response = await fetch(`/api/requests/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status, managerPassword }),
+        body: JSON.stringify({ status }),
       });
 
       if (!response.ok) {
@@ -191,24 +191,19 @@ export function LiveApp() {
     [],
   );
 
-  const handleDeleteRequest = useCallback(
-    async (id: string, managerPassword: string) => {
-      const response = await fetch(`/api/requests/${id}`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ managerPassword }),
-      });
+  const handleDeleteRequest = useCallback(async (id: string) => {
+    const response = await fetch(`/api/requests/${id}`, {
+      method: "DELETE",
+    });
 
-      const data = (await response.json()) as { error?: string };
-      if (!response.ok) {
-        throw new Error(data.error ?? "Failed to delete request");
-      }
+    const data = (await response.json()) as { error?: string };
+    if (!response.ok) {
+      throw new Error(data.error ?? "Failed to delete request");
+    }
 
-      setRequests((current) => current.filter((item) => item.id !== id));
-      setToast("Request deleted");
-    },
-    [],
-  );
+    setRequests((current) => current.filter((item) => item.id !== id));
+    setToast("Request deleted");
+  }, []);
 
   const handleCopyRequest = useCallback((request: MaterialRequest) => {
     setFormSeed({

@@ -15,7 +15,6 @@ import {
 export type ManagerReplyPayload = {
   itemId: string;
   status: RequestStatus;
-  managerPassword: string;
   managerResponse: {
     availability: Availability;
     leadTime: string;
@@ -29,7 +28,6 @@ type ManagerReplyFormProps = {
   request: MaterialRequest;
   item: RequestItem;
   defaultRespondedBy?: string;
-  managerPassword: string;
   onSubmit: (id: string, payload: ManagerReplyPayload) => Promise<void>;
 };
 
@@ -37,7 +35,6 @@ export function ManagerReplyForm({
   request,
   item,
   defaultRespondedBy = "",
-  managerPassword,
   onSubmit,
 }: ManagerReplyFormProps) {
   const existing = item.managerResponse;
@@ -72,14 +69,9 @@ export function ManagerReplyForm({
     setError(null);
 
     try {
-      if (!managerPassword.trim()) {
-        throw new Error("Unlock manager access first");
-      }
-
       await onSubmit(request.id, {
         itemId: item.id,
         status,
-        managerPassword,
         managerResponse: {
           availability,
           leadTime,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   EditRequestForm,
   type EditRequestPayload,
@@ -41,14 +41,10 @@ type RequestBoardProps = {
   requests: MaterialRequest[];
   connected: boolean;
   highlightId?: string | null;
-  onStatusChange: (
-    id: string,
-    status: RequestStatus,
-    managerPassword: string,
-  ) => Promise<void>;
+  onStatusChange: (id: string, status: RequestStatus) => Promise<void>;
   onManagerReply: (id: string, payload: ManagerReplyPayload) => Promise<void>;
   onEditRequest: (id: string, payload: EditRequestPayload) => Promise<void>;
-  onDeleteRequest: (id: string, managerPassword: string) => Promise<void>;
+  onDeleteRequest: (id: string) => Promise<void>;
   onCopyRequest: (request: MaterialRequest) => void;
 };
 
@@ -69,11 +65,6 @@ export function RequestBoard({
     {},
   );
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [managerPassword, setManagerPassword] = useState("");
-  const [passwordDraft, setPasswordDraft] = useState("");
-  const [managerUnlocked, setManagerUnlocked] = useState(false);
-  const [unlockError, setUnlockError] = useState<string | null>(null);
-  const [unlocking, setUnlocking] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
@@ -149,50 +140,7 @@ export function RequestBoard({
     }));
   }
 
-  async function unlockManager(event: FormEvent) {
-    event.preventDefault();
-    setUnlocking(true);
-    setUnlockError(null);
-
-    try {
-      const response = await fetch("/api/manager/unlock", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password: passwordDraft }),
-      });
-      const data = (await response.json()) as { error?: string };
-      if (!response.ok) {
-        throw new Error(data.error ?? "Incorrect manager password");
-      }
-
-      setManagerPassword(passwordDraft.trim());
-      setManagerUnlocked(true);
-      setPasswordDraft("");
-    } catch (err) {
-      setManagerUnlocked(false);
-      setManagerPassword("");
-      setUnlockError(
-        err instanceof Error ? err.message : "Could not unlock manager access",
-      );
-    } finally {
-      setUnlocking(false);
-    }
-  }
-
-  function lockManager() {
-    setManagerUnlocked(false);
-    setManagerPassword("");
-    setPasswordDraft("");
-    setUnlockError(null);
-    setDeleteError(null);
-    setExpandedReplies({});
-  }
-
   async function handleDelete(request: MaterialRequest) {
-    if (!managerUnlocked) {
-      setDeleteError("Unlock manager access in Detail to delete requests.");
-      return;
-    }
     const label = `${request.customer || "Untitled"} / PO ${request.poNumber || "—"}`;
     const confirmed = window.confirm(
       `Delete this request?\n\n${label}\n\nThis cannot be undone.`,
@@ -202,7 +150,7 @@ export function RequestBoard({
     setDeleting(true);
     setDeleteError(null);
     try {
-      await onDeleteRequest(request.id, managerPassword);
+      await onDeleteRequest(request.id);
       setEditingId(null);
       if (selectedId === request.id) {
         setSelectedId(null);
@@ -371,12 +319,7 @@ export function RequestBoard({
                       <button
                         type="button"
                         className="danger-btn"
-                        disabled={deleting || !managerUnlocked}
-                        title={
-                          managerUnlocked
-                            ? "Delete request"
-                            : "Unlock manager access in Detail to delete"
-                        }
+                        disabled={deleting}
                         onClick={() => {
                           void handleDelete(request);
                         }}
@@ -400,44 +343,6 @@ export function RequestBoard({
             <h2>Detail</h2>
             <p>Reply, edit, and update status for the selected request.</p>
           </div>
-        </div>
-
-        <div className={`manager-gate${managerUnlocked ? " unlocked" : ""}`}>
-          {managerUnlocked ? (
-            <div className="manager-gate-row">
-              <p>
-                <strong>Manager mode on</strong>
-                <span>You can reply, update status, and delete.</span>
-              </p>
-              <button type="button" className="ghost-btn" onClick={lockManager}>
-                Lock
-              </button>
-            </div>
-          ) : (
-            <form className="manager-gate-form" onSubmit={unlockManager}>
-              <div>
-                <strong>Manager access</strong>
-                <p>Enter password to reply, change status, or delete.</p>
-              </div>
-              <label className="field">
-                <span>Password</span>
-                <input
-                  type="password"
-                  autoComplete="current-password"
-                  value={passwordDraft}
-                  onChange={(e) => setPasswordDraft(e.target.value)}
-                  placeholder="Manager password"
-                  required
-                />
-              </label>
-              <button className="reply-btn" type="submit" disabled={unlocking}>
-                {unlocking ? "Checking…" : "Unlock"}
-              </button>
-              {unlockError ? (
-                <p className="form-message error">{unlockError}</p>
-              ) : null}
-            </form>
-          )}
         </div>
         {deleteError ? (
           <p className="form-message error">{deleteError}</p>
@@ -522,12 +427,10 @@ export function RequestBoard({
                 <span>Status</span>
                 <select
                   value={selected.status}
-                  disabled={!managerUnlocked}
                   onChange={(event) => {
                     void onStatusChange(
                       selected.id,
                       event.target.value as RequestStatus,
-                      managerPassword,
                     );
                   }}
                 >
@@ -541,12 +444,7 @@ export function RequestBoard({
               <button
                 type="button"
                 className="danger-btn"
-                disabled={deleting || !managerUnlocked}
-                title={
-                  managerUnlocked
-                    ? "Delete request"
-                    : "Unlock manager access above to delete"
-                }
+                disabled={deleting}
                 onClick={() => {
                   void handleDelete(selected);
                 }}
@@ -616,34 +514,27 @@ export function RequestBoard({
                       />
                     ) : null}
 
-                    {managerUnlocked ? (
-                      <>
-                        <button
-                          type="button"
-                          className="reply-toggle"
-                          onClick={() => toggleReply(item.id)}
-                        >
-                          {replyOpen
-                            ? "Hide manager reply form"
-                            : item.managerResponse
-                              ? "Update manager reply"
-                              : "Reply as manager"}
-                        </button>
+                    <>
+                      <button
+                        type="button"
+                        className="reply-toggle"
+                        onClick={() => toggleReply(item.id)}
+                      >
+                        {replyOpen
+                          ? "Hide manager reply form"
+                          : item.managerResponse
+                            ? "Update manager reply"
+                            : "Reply as manager"}
+                      </button>
 
-                        {replyOpen ? (
-                          <ManagerReplyForm
-                            request={selected}
-                            item={item}
-                            managerPassword={managerPassword}
-                            onSubmit={onManagerReply}
-                          />
-                        ) : null}
-                      </>
-                    ) : (
-                      <p className="manager-locked-note">
-                        Unlock manager access above to reply.
-                      </p>
-                    )}
+                      {replyOpen ? (
+                        <ManagerReplyForm
+                          request={selected}
+                          item={item}
+                          onSubmit={onManagerReply}
+                        />
+                      ) : null}
+                    </>
                   </li>
                 );
               })}

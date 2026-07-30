@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { isValidManagerPassword } from "@/lib/managerAuth";
 import { parseRequestItems } from "@/lib/parseItems";
 import { deleteRequest, updateRequest } from "@/lib/store";
 import {
@@ -15,30 +14,8 @@ type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
-export async function DELETE(request: Request, context: RouteContext) {
+export async function DELETE(_request: Request, context: RouteContext) {
   const { id } = await context.params;
-
-  let body: unknown = {};
-  try {
-    const text = await request.text();
-    if (text.trim()) {
-      body = JSON.parse(text) as unknown;
-    }
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
-
-  const managerPassword =
-    body && typeof body === "object"
-      ? (body as Record<string, unknown>).managerPassword
-      : undefined;
-
-  if (!isValidManagerPassword(managerPassword)) {
-    return NextResponse.json(
-      { error: "Manager password required to delete a request." },
-      { status: 401 },
-    );
-  }
 
   const deleted = await deleteRequest(id);
   if (!deleted) {
@@ -64,7 +41,6 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   const payload = body as Record<string, unknown>;
   const input: UpdateMaterialRequestInput = {};
-  const managerPassword = payload.managerPassword;
 
   if (payload.customer !== undefined) {
     const customer = String(payload.customer).trim();
@@ -134,20 +110,6 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   const itemId = String(payload.itemId ?? "").trim();
   const managerResponseRaw = payload.managerResponse;
-  const isManagerAction =
-    input.status !== undefined ||
-    managerResponseRaw !== undefined ||
-    Boolean(itemId);
-
-  if (isManagerAction && !isValidManagerPassword(managerPassword)) {
-    return NextResponse.json(
-      {
-        error:
-          "Manager password required. Only managers can reply or update status.",
-      },
-      { status: 401 },
-    );
-  }
 
   if (managerResponseRaw !== undefined || itemId) {
     if (!itemId) {
