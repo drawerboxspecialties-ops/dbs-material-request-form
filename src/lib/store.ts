@@ -160,7 +160,6 @@ function normalizeRequest(raw: Record<string, unknown>): MaterialRequest | null 
     items,
     department: String(raw.department ?? ""),
     requesterName: String(raw.requesterName ?? ""),
-    priority: (raw.priority as MaterialRequest["priority"]) ?? "normal",
     status: (raw.status as MaterialRequest["status"]) ?? "pending",
     notes: String(raw.notes ?? ""),
     createdAt,
@@ -271,7 +270,6 @@ export function createRequest(
     items,
     department: input.department.trim(),
     requesterName: input.requesterName.trim(),
-    priority: input.priority,
     status: "pending",
     notes: (input.notes ?? "").trim(),
     createdAt: now,
@@ -408,7 +406,6 @@ export function updateRequest(
         ? input.requesterName.trim()
         : current.requesterName,
     status: input.status ?? current.status,
-    priority: input.priority ?? current.priority,
     notes: input.notes !== undefined ? input.notes.trim() : current.notes,
     // Always refresh edit timestamp when anything changes.
     updatedAt: now,

@@ -17,7 +17,6 @@ import {
   formatMaterialSpec,
   repliedItemCount,
   type MaterialRequest,
-  type Priority,
   type RequestStatus,
 } from "@/lib/types";
 
@@ -40,10 +39,6 @@ function formatTime(value: string) {
 
 function statusLabel(status: RequestStatus) {
   return STATUS_OPTIONS.find((item) => item.value === status)?.label ?? status;
-}
-
-function priorityLabel(priority: Priority) {
-  return priority.charAt(0).toUpperCase() + priority.slice(1);
 }
 
 type RequestBoardProps = {
@@ -311,9 +306,6 @@ export function RequestBoard({
                         {PRODUCT_TYPE_LABELS[type]}
                       </span>
                     ))}
-                    <span className={`badge priority-${request.priority}`}>
-                      {priorityLabel(request.priority)}
-                    </span>
                     <span className={`badge status-${request.status}`}>
                       {statusLabel(request.status)}
                     </span>

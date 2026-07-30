@@ -7,16 +7,8 @@ import {
   PRODUCT_UNITS,
   describeSheetMatch,
   type MaterialRequest,
-  type Priority,
   type ProductType,
 } from "@/lib/types";
-
-const PRIORITY_OPTIONS: { value: Priority; label: string }[] = [
-  { value: "low", label: "Low" },
-  { value: "normal", label: "Normal" },
-  { value: "high", label: "High" },
-  { value: "urgent", label: "Urgent" },
-];
 
 const PRODUCT_PLACEHOLDERS: Record<ProductType, string> = {
   material: "e.g. White melamine 18mm",
@@ -68,7 +60,6 @@ export type EditRequestPayload = {
   poNumber: string;
   department: string;
   requesterName: string;
-  priority: Priority;
   notes: string;
   items: Array<{
     id?: string;
@@ -98,7 +89,6 @@ export function EditRequestForm({
   const [poNumber, setPoNumber] = useState(request.poNumber);
   const [department, setDepartment] = useState(request.department);
   const [requesterName, setRequesterName] = useState(request.requesterName);
-  const [priority, setPriority] = useState<Priority>(request.priority);
   const [notes, setNotes] = useState(request.notes);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -109,7 +99,6 @@ export function EditRequestForm({
     setPoNumber(request.poNumber);
     setDepartment(request.department);
     setRequesterName(request.requesterName);
-    setPriority(request.priority);
     setNotes(request.notes);
   }, [request]);
 
@@ -229,7 +218,6 @@ export function EditRequestForm({
         poNumber: poNumber.trim(),
         department: department.trim(),
         requesterName: requesterName.trim(),
-        priority,
         notes: notes.trim(),
         items: payloadItems,
       });
@@ -288,23 +276,6 @@ export function EditRequestForm({
             onChange={(e) => setRequesterName(e.target.value)}
           />
         </label>
-        <div className="field field-span-2">
-          <span>Priority</span>
-          <div className="priority-row" role="group" aria-label="Priority">
-            {PRIORITY_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                className={`priority-chip priority-${option.value}${
-                  priority === option.value ? " active" : ""
-                }`}
-                onClick={() => setPriority(option.value)}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
 
       <div className="items-heading" style={{ marginTop: "1rem" }}>

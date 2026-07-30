@@ -3,7 +3,6 @@ import { isValidManagerPassword } from "@/lib/managerAuth";
 import { parseRequestItems } from "@/lib/parseItems";
 import { updateRequest } from "@/lib/store";
 import {
-  PRIORITIES,
   STATUSES,
   isAvailability,
   type UpdateMaterialRequestInput,
@@ -80,16 +79,6 @@ export async function PATCH(request: Request, context: RouteContext) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
     input.status = payload.status as UpdateMaterialRequestInput["status"];
-  }
-
-  if (payload.priority !== undefined) {
-    if (
-      typeof payload.priority !== "string" ||
-      !(PRIORITIES as readonly string[]).includes(payload.priority)
-    ) {
-      return NextResponse.json({ error: "Invalid priority" }, { status: 400 });
-    }
-    input.priority = payload.priority as UpdateMaterialRequestInput["priority"];
   }
 
   if (payload.notes !== undefined) {
@@ -184,7 +173,6 @@ export async function PATCH(request: Request, context: RouteContext) {
     input.department === undefined &&
     input.requesterName === undefined &&
     input.status === undefined &&
-    input.priority === undefined &&
     input.notes === undefined &&
     input.items === undefined &&
     input.itemReply === undefined

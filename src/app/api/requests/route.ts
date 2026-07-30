@@ -1,22 +1,10 @@
 import { NextResponse } from "next/server";
 import { parseRequestItems } from "@/lib/parseItems";
 import { createRequest, listRequests } from "@/lib/store";
-import {
-  PRIORITIES,
-  isProductType,
-  type CreateMaterialRequestInput,
-} from "@/lib/types";
+import { isProductType } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-function isPriority(
-  value: unknown,
-): value is CreateMaterialRequestInput["priority"] {
-  return (
-    typeof value === "string" && (PRIORITIES as readonly string[]).includes(value)
-  );
-}
 
 export async function GET() {
   return NextResponse.json({ requests: listRequests() });
@@ -40,7 +28,6 @@ export async function POST(request: Request) {
   const department = String(payload.department ?? "").trim();
   const requesterName = String(payload.requesterName ?? "").trim();
   const notes = String(payload.notes ?? "").trim();
-  const priority = payload.priority;
 
   let items = parseRequestItems(payload.items);
   if (!items && isProductType(payload.productType)) {
@@ -81,17 +68,12 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!isPriority(priority)) {
-    return NextResponse.json({ error: "Invalid priority" }, { status: 400 });
-  }
-
   const created = createRequest({
     customer,
     poNumber,
     items,
     department,
     requesterName,
-    priority,
     notes,
   });
 

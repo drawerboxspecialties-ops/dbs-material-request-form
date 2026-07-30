@@ -6,8 +6,6 @@ export const STATUSES = [
   "rejected",
 ] as const;
 
-export const PRIORITIES = ["low", "normal", "high", "urgent"] as const;
-
 export const PRODUCT_TYPES = ["material", "hardware", "edgeband"] as const;
 
 export const AVAILABILITIES = [
@@ -37,7 +35,6 @@ export const AVAILABILITY_LABELS = {
 } as const;
 
 export type RequestStatus = (typeof STATUSES)[number];
-export type Priority = (typeof PRIORITIES)[number];
 export type ProductType = (typeof PRODUCT_TYPES)[number];
 export type ProductUnit = (typeof PRODUCT_UNITS)[ProductType];
 export type Availability = (typeof AVAILABILITIES)[number];
@@ -77,7 +74,6 @@ export type MaterialRequest = {
   items: RequestItem[];
   department: string;
   requesterName: string;
-  priority: Priority;
   status: RequestStatus;
   notes: string;
   /** Locked when the request is first submitted. */
@@ -108,7 +104,6 @@ export type CreateMaterialRequestInput = {
   items: CreateRequestItemInput[];
   department: string;
   requesterName: string;
-  priority: Priority;
   notes?: string;
 };
 
@@ -118,7 +113,6 @@ export type UpdateMaterialRequestInput = {
   department?: string;
   requesterName?: string;
   status?: RequestStatus;
-  priority?: Priority;
   notes?: string;
   items?: CreateRequestItemInput[];
   itemReply?: {

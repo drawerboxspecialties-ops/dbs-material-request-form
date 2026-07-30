@@ -6,16 +6,8 @@ import {
   PRODUCT_TYPE_LABELS,
   PRODUCT_UNITS,
   describeSheetMatch,
-  type Priority,
   type ProductType,
 } from "@/lib/types";
-
-const PRIORITY_OPTIONS: { value: Priority; label: string }[] = [
-  { value: "low", label: "Low" },
-  { value: "normal", label: "Normal" },
-  { value: "high", label: "High" },
-  { value: "urgent", label: "Urgent" },
-];
 
 const PRODUCT_PLACEHOLDERS: Record<ProductType, string> = {
   material: "e.g. White melamine 18mm",
@@ -57,7 +49,6 @@ export function RequestForm({ onCreated }: RequestFormProps) {
   const [poNumber, setPoNumber] = useState("");
   const [department, setDepartment] = useState("");
   const [requesterName, setRequesterName] = useState("");
-  const [priority, setPriority] = useState<Priority>("normal");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -181,7 +172,6 @@ export function RequestForm({ onCreated }: RequestFormProps) {
           items: payloadItems,
           department,
           requesterName,
-          priority,
           notes,
         }),
       });
@@ -198,7 +188,6 @@ export function RequestForm({ onCreated }: RequestFormProps) {
       setCustomer("");
       setPoNumber("");
       setNotes("");
-      setPriority("normal");
       onCreated?.(data.request.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -246,7 +235,7 @@ export function RequestForm({ onCreated }: RequestFormProps) {
           <span>2</span>
           <div>
             <h3>Requester</h3>
-            <p>Who is asking and how urgent.</p>
+            <p>Who is asking.</p>
           </div>
         </div>
 
@@ -270,24 +259,6 @@ export function RequestForm({ onCreated }: RequestFormProps) {
               placeholder="Your name"
             />
           </label>
-
-          <div className="field field-span-2">
-            <span>Priority</span>
-            <div className="priority-row" role="group" aria-label="Priority">
-              {PRIORITY_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  className={`priority-chip priority-${option.value}${
-                    priority === option.value ? " active" : ""
-                  }`}
-                  onClick={() => setPriority(option.value)}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       </section>
 
