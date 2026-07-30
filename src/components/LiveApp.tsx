@@ -24,6 +24,28 @@ function upsertRequest(
   );
 }
 
+function mergeRequestLists(
+  current: MaterialRequest[],
+  incoming: MaterialRequest[],
+): MaterialRequest[] {
+  const map = new Map<string, MaterialRequest>();
+  for (const request of [...current, ...incoming]) {
+    const previous = map.get(request.id);
+    if (
+      !previous ||
+      new Date(request.updatedAt).getTime() >=
+        new Date(previous.updatedAt).getTime()
+    ) {
+      map.set(request.id, request);
+    }
+  }
+  return [...map.values()].sort(
+    (a, b) =>
+      new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime() ||
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
+}
+
 export function LiveApp() {
   const [requests, setRequests] = useState<MaterialRequest[]>([]);
   const [connected, setConnected] = useState(false);
@@ -51,7 +73,11 @@ export function LiveApp() {
         try {
           const event = JSON.parse(message.data) as StoreEvent;
           if (event.type === "snapshot") {
-            setRequests(event.requests);
+            // Merge instead of replace so a cold serverless instance
+            // cannot wipe a request the browser just created.
+            setRequests((current) =>
+              mergeRequestLists(current, event.requests),
+            );
           } else if (event.type === "created" || event.type === "updated") {
             setRequests((current) => upsertRequest(current, event.request));
           }
@@ -74,6 +100,32 @@ export function LiveApp() {
       cancelled = true;
       if (retryTimer) clearTimeout(retryTimer);
       source?.close();
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const refresh = async () => {
+      try {
+        const response = await fetch("/api/requests", { cache: "no-store" });
+        if (!response.ok) return;
+        const data = (await response.json()) as { requests?: MaterialRequest[] };
+        if (cancelled || !Array.isArray(data.requests)) return;
+        setRequests((current) => mergeRequestLists(current, data.requests!));
+      } catch {
+        // Keep SSE as primary; polling is a backup only.
+      }
+    };
+
+    void refresh();
+    const timer = setInterval(() => {
+      void refresh();
+    }, 4000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
     };
   }, []);
 
@@ -198,27 +250,26 @@ export function LiveApp() {
           <div className="panel-heading">
             <div>
               <h2>New request</h2>
-              <p>Customer, PO, and products in one submit.</p>
+              <p>Compose and submit without leaving the board.</p>
             </div>
           </div>
           <RequestForm
-            onCreated={(requestId) => {
-              setFlashRequestId(requestId);
+            onCreated={(request) => {
+              setRequests((current) => upsertRequest(current, request));
+              setFlashRequestId(request.id);
               setToast("Request submitted");
             }}
           />
         </section>
 
-        <section className="panel-board">
-          <RequestBoard
-            requests={requests}
-            connected={connected}
-            highlightId={flashRequestId}
-            onStatusChange={handleStatusChange}
-            onManagerReply={handleManagerReply}
-            onEditRequest={handleEditRequest}
-          />
-        </section>
+        <RequestBoard
+          requests={requests}
+          connected={connected}
+          highlightId={flashRequestId}
+          onStatusChange={handleStatusChange}
+          onManagerReply={handleManagerReply}
+          onEditRequest={handleEditRequest}
+        />
       </main>
     </div>
   );

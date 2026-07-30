@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  return NextResponse.json({ requests: listRequests() });
+  return NextResponse.json({ requests: await listRequests() });
 }
 
 export async function POST(request: Request) {
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const created = createRequest({
+  const created = await createRequest({
     customer,
     poNumber,
     items,

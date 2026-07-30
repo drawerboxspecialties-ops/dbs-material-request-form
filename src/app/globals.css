@@ -70,9 +70,9 @@ textarea {
 
 .app-shell {
   position: relative;
-  width: min(1280px, calc(100% - 1.25rem));
+  width: min(1480px, calc(100% - 1rem));
   margin: 0 auto;
-  padding: 0.85rem 0 2rem;
+  padding: 0.65rem 0 1.25rem;
   z-index: 1;
 }
 
@@ -267,20 +267,149 @@ textarea {
 
 .workspace {
   display: grid;
-  grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
-  gap: 0.65rem;
-  align-items: start;
+  grid-template-columns:
+    minmax(280px, 340px)
+    minmax(260px, 360px)
+    minmax(0, 1fr);
+  gap: 0.55rem;
+  align-items: stretch;
+  min-height: calc(100vh - 5.5rem);
+}
+
+.panel-compose,
+.panel-queue,
+.panel-detail {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: calc(100vh - 5.5rem);
+  overflow: auto;
 }
 
 .panel-compose {
   position: sticky;
-  top: 0.65rem;
-  max-height: calc(100vh - 1.3rem);
-  overflow: auto;
+  top: 0.5rem;
 }
 
-.panel-board .board {
-  min-height: 18rem;
+.panel-compose .form-grid {
+  grid-template-columns: 1fr;
+}
+
+.panel-compose .field-span-2 {
+  grid-column: auto;
+}
+
+.queue-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.queue-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.queue-card {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  padding: 0.55rem 0.6rem;
+  cursor: pointer;
+  transition:
+    border-color 140ms var(--ease),
+    background 140ms var(--ease),
+    box-shadow 140ms var(--ease),
+    transform 140ms var(--ease);
+}
+
+.queue-card:hover {
+  border-color: rgba(10, 84, 112, 0.28);
+  transform: translateY(-1px);
+}
+
+.queue-card.active {
+  border-color: rgba(10, 84, 112, 0.4);
+  background: rgba(10, 84, 112, 0.06);
+  box-shadow: inset 3px 0 0 var(--brand);
+}
+
+.queue-card.flash {
+  animation: flash-row 1.2s var(--ease);
+}
+
+.queue-card-top,
+.queue-card-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.queue-card-top strong {
+  font-size: 0.88rem;
+  color: var(--brand-deep);
+  line-height: 1.2;
+}
+
+.queue-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin: 0.28rem 0 0.35rem;
+  color: var(--ink-muted);
+  font-size: 0.72rem;
+}
+
+.queue-type-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.22rem;
+}
+
+.detail-card {
+  margin-top: 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 0.7rem;
+}
+
+.detail-card.flash {
+  animation: flash-row 1.2s var(--ease);
+}
+
+.detail-title-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.55rem;
+  align-items: flex-start;
+}
+
+.detail-title-row h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  color: var(--brand-deep);
+}
+
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: end;
+  margin: 0.55rem 0 0.15rem;
+}
+
+.status-control.inline {
+  margin: 0;
+  min-width: 9rem;
 }
 
 .panel,
@@ -1232,19 +1361,45 @@ textarea {
   font-weight: 500;
 }
 
-@media (max-width: 900px) {
+.empty-state.compact {
+  padding: 1rem 0.75rem;
+  margin-top: 0.45rem;
+}
+
+@media (max-width: 1200px) {
   .workspace {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
   }
 
   .panel-compose {
+    grid-column: 1 / -1;
+    position: static;
+    max-height: none;
+  }
+
+  .panel-queue,
+  .panel-detail {
+    max-height: calc(100vh - 6rem);
+  }
+}
+
+@media (max-width: 900px) {
+  .workspace {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+
+  .panel-compose,
+  .panel-queue,
+  .panel-detail {
     position: static;
     max-height: none;
   }
 
   .topbar,
   .board-header,
-  .request-row {
+  .request-row,
+  .detail-title-row {
     flex-direction: column;
   }
 

@@ -1,6 +1,7 @@
 import { EventEmitter } from "node:events";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { get, put } from "@vercel/blob";
 import {
   allItemsResponded,
   isAvailability,
@@ -17,6 +18,8 @@ import {
 } from "./types";
 
 const IS_VERCEL = Boolean(process.env.VERCEL);
+const HAS_BLOB = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+const BLOB_PATHNAME = "dbs-material-request-form/requests.json";
 const DATA_DIR = IS_VERCEL
   ? path.join("/tmp", "dbs-material-request-form")
   : path.join(process.cwd(), "data");
@@ -33,6 +36,7 @@ declare global {
     | {
         requests: MaterialRequest[];
         emitter: StoreEmitter;
+        writeChain: Promise<void>;
       }
     | undefined;
 }
@@ -42,6 +46,7 @@ function ensureStore() {
     globalThis.__dbsMaterialStore = {
       requests: loadFromDisk(),
       emitter: new EventEmitter() as StoreEmitter,
+      writeChain: Promise.resolve(),
     };
     globalThis.__dbsMaterialStore.emitter.setMaxListeners(100);
   } else {
@@ -53,6 +58,16 @@ function ensureStore() {
         .filter((item): item is MaterialRequest => item !== null);
   }
   return globalThis.__dbsMaterialStore;
+}
+
+function withStoreLock<T>(fn: () => Promise<T>): Promise<T> {
+  const store = ensureStore();
+  const run = store.writeChain.then(fn, fn);
+  store.writeChain = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  return run;
 }
 
 function inferProductType(unit: unknown): ProductType {
@@ -124,7 +139,6 @@ function normalizeRequest(raw: Record<string, unknown>): MaterialRequest | null 
       )
       .filter((item): item is RequestItem => item !== null);
   } else {
-    // Migrate legacy single-product requests.
     const legacy = normalizeItem(raw);
     if (legacy) {
       items = [
@@ -168,165 +182,150 @@ function normalizeRequest(raw: Record<string, unknown>): MaterialRequest | null 
   };
 }
 
+function parseRequestList(raw: unknown): MaterialRequest[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item) =>
+      item && typeof item === "object"
+        ? normalizeRequest(item as Record<string, unknown>)
+        : null,
+    )
+    .filter((item): item is MaterialRequest => item !== null);
+}
+
 function loadFromDisk(): MaterialRequest[] {
   try {
     if (!existsSync(DATA_FILE)) return [];
     const raw = readFileSync(DATA_FILE, "utf8");
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return [];
-    return parsed
-      .map((item) =>
-        item && typeof item === "object"
-          ? normalizeRequest(item as Record<string, unknown>)
-          : null,
-      )
-      .filter((item): item is MaterialRequest => item !== null);
+    return parseRequestList(JSON.parse(raw) as unknown);
   } catch {
     return [];
   }
 }
 
-function persist(requests: MaterialRequest[]) {
+function persistDisk(requests: MaterialRequest[]) {
   try {
     if (!existsSync(DATA_DIR)) {
       mkdirSync(DATA_DIR, { recursive: true });
     }
     writeFileSync(DATA_FILE, JSON.stringify(requests, null, 2), "utf8");
   } catch (error) {
-    // On some serverless instances disk may be unavailable; memory store still works.
     console.warn("Failed to persist requests to disk", error);
+  }
+}
+
+async function loadFromBlob(): Promise<MaterialRequest[] | null> {
+  if (!HAS_BLOB) return null;
+  try {
+    const result = await get(BLOB_PATHNAME, {
+      access: "private",
+      useCache: false,
+    });
+    if (!result) return [];
+    if (result.statusCode !== 200 || !result.stream) return null;
+    const text = await new Response(result.stream).text();
+    if (!text.trim()) return [];
+    return parseRequestList(JSON.parse(text) as unknown);
+  } catch (error) {
+    console.warn("Failed to load requests from blob", error);
+    return null;
+  }
+}
+
+async function saveToBlob(requests: MaterialRequest[]) {
+  if (!HAS_BLOB) return;
+  try {
+    await put(BLOB_PATHNAME, JSON.stringify(requests, null, 2), {
+      access: "private",
+      addRandomSuffix: false,
+      allowOverwrite: true,
+      contentType: "application/json",
+    });
+  } catch (error) {
+    console.warn("Failed to persist requests to blob", error);
   }
 }
 
 function sortRequests(requests: MaterialRequest[]) {
   return [...requests].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    (a, b) =>
+      new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime() ||
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
 }
 
-export function listRequests(): MaterialRequest[] {
-  return sortRequests(ensureStore().requests);
-}
-
-export function createRequest(
-  input: CreateMaterialRequestInput,
-): MaterialRequest {
-  const store = ensureStore();
-  const now = new Date().toISOString();
-  const items: RequestItem[] = input.items.map((item) => ({
-    id: crypto.randomUUID(),
-    productType: item.productType,
-    productName: item.productName.trim(),
-    quantity: item.quantity,
-    unit: unitForProductType(item.productType),
-    core:
-      item.productType === "material"
-        ? (item.core ?? "").trim() || null
-        : null,
-    color:
-      item.productType === "material"
-        ? (item.color ?? "").trim() || null
-        : null,
-    matchToSheet:
-      item.productType === "edgeband"
-        ? (item.matchToSheet ?? "").trim() || null
-        : null,
-    matchedItemId: null,
-    managerResponse: null,
-  }));
-
-  // Resolve edgeband → material sheet links within this request.
-  input.items.forEach((item, index) => {
-    if (item.productType !== "edgeband") return;
-    const matchedIndex = item.matchedItemIndex;
-    if (
-      matchedIndex === undefined ||
-      matchedIndex === null ||
-      !Number.isInteger(matchedIndex) ||
-      matchedIndex < 0 ||
-      matchedIndex >= items.length
-    ) {
-      return;
+export function mergeRequests(
+  ...lists: MaterialRequest[][]
+): MaterialRequest[] {
+  const map = new Map<string, MaterialRequest>();
+  for (const list of lists) {
+    for (const request of list) {
+      const previous = map.get(request.id);
+      if (
+        !previous ||
+        new Date(request.updatedAt).getTime() >=
+          new Date(previous.updatedAt).getTime()
+      ) {
+        map.set(request.id, request);
+      }
     }
-    const target = items[matchedIndex];
-    if (target.productType !== "material") return;
-    items[index] = {
-      ...items[index],
-      matchedItemId: target.id,
-      matchToSheet:
-        items[index].matchToSheet ||
-        `${target.productName}${
-          target.core || target.color
-            ? ` (${[target.core, target.color].filter(Boolean).join(" · ")})`
-            : ""
-        }`,
-    };
-  });
-
-  const request: MaterialRequest = {
-    id: crypto.randomUUID(),
-    customer: input.customer.trim(),
-    poNumber: input.poNumber.trim(),
-    items,
-    department: input.department.trim(),
-    requesterName: input.requesterName.trim(),
-    status: "pending",
-    notes: (input.notes ?? "").trim(),
-    createdAt: now,
-    respondedAt: null,
-    updatedAt: now,
-  };
-
-  store.requests = [request, ...store.requests];
-  persist(store.requests);
-  store.emitter.emit("change", { type: "created", request });
-  return request;
+  }
+  return sortRequests([...map.values()]);
 }
 
-export function updateRequest(
-  id: string,
-  input: UpdateMaterialRequestInput,
-): MaterialRequest | null {
+async function hydrateFromShared() {
+  const remote = await loadFromBlob();
+  if (remote === null) return;
   const store = ensureStore();
-  const index = store.requests.findIndex((item) => item.id === id);
-  if (index === -1) return null;
+  store.requests = mergeRequests(store.requests, remote);
+}
 
-  const current = store.requests[index];
-  const now = new Date().toISOString();
-  let items = current.items;
+async function persist(requests: MaterialRequest[]) {
+  const store = ensureStore();
+  const remote = await loadFromBlob();
+  const merged = remote === null ? requests : mergeRequests(remote, requests);
+  store.requests = merged;
+  persistDisk(merged);
+  await saveToBlob(merged);
+}
 
-  if (input.items) {
-    const previousById = new Map(current.items.map((item) => [item.id, item]));
-    items = input.items.map((item) => {
-      const existing =
-        item.id && previousById.has(item.id)
-          ? previousById.get(item.id)
-          : undefined;
-      return {
-        id: existing?.id ?? crypto.randomUUID(),
-        productType: item.productType,
-        productName: item.productName.trim(),
-        quantity: item.quantity,
-        unit: unitForProductType(item.productType),
-        core:
-          item.productType === "material"
-            ? (item.core ?? "").trim() || null
-            : null,
-        color:
-          item.productType === "material"
-            ? (item.color ?? "").trim() || null
-            : null,
-        matchToSheet:
-          item.productType === "edgeband"
-            ? (item.matchToSheet ?? "").trim() || null
-            : null,
-        matchedItemId: null,
-        // Keep existing manager reply when the same line item id is reused.
-        managerResponse: existing?.managerResponse ?? null,
-      };
-    });
+export async function listRequests(): Promise<MaterialRequest[]> {
+  return withStoreLock(async () => {
+    await hydrateFromShared();
+    return sortRequests(ensureStore().requests);
+  });
+}
 
-    input.items.forEach((item, itemIndex) => {
+export async function createRequest(
+  input: CreateMaterialRequestInput,
+): Promise<MaterialRequest> {
+  return withStoreLock(async () => {
+    await hydrateFromShared();
+    const store = ensureStore();
+    const now = new Date().toISOString();
+    const items: RequestItem[] = input.items.map((item) => ({
+      id: crypto.randomUUID(),
+      productType: item.productType,
+      productName: item.productName.trim(),
+      quantity: item.quantity,
+      unit: unitForProductType(item.productType),
+      core:
+        item.productType === "material"
+          ? (item.core ?? "").trim() || null
+          : null,
+      color:
+        item.productType === "material"
+          ? (item.color ?? "").trim() || null
+          : null,
+      matchToSheet:
+        item.productType === "edgeband"
+          ? (item.matchToSheet ?? "").trim() || null
+          : null,
+      matchedItemId: null,
+      managerResponse: null,
+    }));
+
+    input.items.forEach((item, index) => {
       if (item.productType !== "edgeband") return;
       const matchedIndex = item.matchedItemIndex;
       if (
@@ -340,11 +339,11 @@ export function updateRequest(
       }
       const target = items[matchedIndex];
       if (target.productType !== "material") return;
-      items[itemIndex] = {
-        ...items[itemIndex],
+      items[index] = {
+        ...items[index],
         matchedItemId: target.id,
         matchToSheet:
-          items[itemIndex].matchToSheet ||
+          items[index].matchToSheet ||
           `${target.productName}${
             target.core || target.color
               ? ` (${[target.core, target.color].filter(Boolean).join(" · ")})`
@@ -352,69 +351,158 @@ export function updateRequest(
           }`,
       };
     });
-  }
 
-  if (input.itemReply) {
-    const itemIndex = items.findIndex(
-      (item) => item.id === input.itemReply!.itemId,
-    );
-    if (itemIndex === -1) return null;
-
-    const currentItem = items[itemIndex];
-    const reply = input.itemReply.managerResponse;
-    const nextItem: RequestItem = {
-      ...currentItem,
-      managerResponse: {
-        availability: reply.availability,
-        leadTime: reply.leadTime.trim(),
-        price: reply.price.trim(),
-        vendor: reply.vendor.trim(),
-        respondedBy: reply.respondedBy.trim(),
-        // Lock first response timestamp for this line item.
-        respondedAt: currentItem.managerResponse?.respondedAt ?? now,
-      },
+    const request: MaterialRequest = {
+      id: crypto.randomUUID(),
+      customer: input.customer.trim(),
+      poNumber: input.poNumber.trim(),
+      items,
+      department: input.department.trim(),
+      requesterName: input.requesterName.trim(),
+      status: "pending",
+      notes: (input.notes ?? "").trim(),
+      createdAt: now,
+      respondedAt: null,
+      updatedAt: now,
     };
-    items = items.map((item, i) => (i === itemIndex ? nextItem : item));
-  }
 
-  // Lock request-level respondedAt the first time every product is answered.
-  // If items were edited and a previously complete reply set is broken, clear it.
-  let respondedAt = current.respondedAt;
-  if (allItemsResponded(items)) {
-    if (!respondedAt) {
-      respondedAt = now;
+    store.requests = [request, ...store.requests];
+    await persist(store.requests);
+    store.emitter.emit("change", { type: "created", request });
+    return request;
+  });
+}
+
+export async function updateRequest(
+  id: string,
+  input: UpdateMaterialRequestInput,
+): Promise<MaterialRequest | null> {
+  return withStoreLock(async () => {
+    await hydrateFromShared();
+    const store = ensureStore();
+    const index = store.requests.findIndex((item) => item.id === id);
+    if (index === -1) return null;
+
+    const current = store.requests[index];
+    const now = new Date().toISOString();
+    let items = current.items;
+
+    if (input.items) {
+      const previousById = new Map(current.items.map((item) => [item.id, item]));
+      items = input.items.map((item) => {
+        const existing =
+          item.id && previousById.has(item.id)
+            ? previousById.get(item.id)
+            : undefined;
+        return {
+          id: existing?.id ?? crypto.randomUUID(),
+          productType: item.productType,
+          productName: item.productName.trim(),
+          quantity: item.quantity,
+          unit: unitForProductType(item.productType),
+          core:
+            item.productType === "material"
+              ? (item.core ?? "").trim() || null
+              : null,
+          color:
+            item.productType === "material"
+              ? (item.color ?? "").trim() || null
+              : null,
+          matchToSheet:
+            item.productType === "edgeband"
+              ? (item.matchToSheet ?? "").trim() || null
+              : null,
+          matchedItemId: null,
+          managerResponse: existing?.managerResponse ?? null,
+        };
+      });
+
+      input.items.forEach((item, itemIndex) => {
+        if (item.productType !== "edgeband") return;
+        const matchedIndex = item.matchedItemIndex;
+        if (
+          matchedIndex === undefined ||
+          matchedIndex === null ||
+          !Number.isInteger(matchedIndex) ||
+          matchedIndex < 0 ||
+          matchedIndex >= items.length
+        ) {
+          return;
+        }
+        const target = items[matchedIndex];
+        if (target.productType !== "material") return;
+        items[itemIndex] = {
+          ...items[itemIndex],
+          matchedItemId: target.id,
+          matchToSheet:
+            items[itemIndex].matchToSheet ||
+            `${target.productName}${
+              target.core || target.color
+                ? ` (${[target.core, target.color].filter(Boolean).join(" · ")})`
+                : ""
+            }`,
+        };
+      });
     }
-  } else {
-    respondedAt = null;
-  }
 
-  const updated: MaterialRequest = {
-    ...current,
-    createdAt: current.createdAt,
-    respondedAt,
-    items,
-    customer:
-      input.customer !== undefined ? input.customer.trim() : current.customer,
-    poNumber:
-      input.poNumber !== undefined ? input.poNumber.trim() : current.poNumber,
-    department:
-      input.department !== undefined
-        ? input.department.trim()
-        : current.department,
-    requesterName:
-      input.requesterName !== undefined
-        ? input.requesterName.trim()
-        : current.requesterName,
-    status: input.status ?? current.status,
-    notes: input.notes !== undefined ? input.notes.trim() : current.notes,
-    // Always refresh edit timestamp when anything changes.
-    updatedAt: now,
-  };
+    if (input.itemReply) {
+      const itemIndex = items.findIndex(
+        (item) => item.id === input.itemReply!.itemId,
+      );
+      if (itemIndex === -1) return null;
 
-  store.requests[index] = updated;
-  persist(store.requests);
-  store.emitter.emit("change", { type: "updated", request: updated });
-  return updated;
+      const currentItem = items[itemIndex];
+      const reply = input.itemReply.managerResponse;
+      const nextItem: RequestItem = {
+        ...currentItem,
+        managerResponse: {
+          availability: reply.availability,
+          leadTime: reply.leadTime.trim(),
+          price: reply.price.trim(),
+          vendor: reply.vendor.trim(),
+          respondedBy: reply.respondedBy.trim(),
+          respondedAt: currentItem.managerResponse?.respondedAt ?? now,
+        },
+      };
+      items = items.map((item, i) => (i === itemIndex ? nextItem : item));
+    }
+
+    let respondedAt = current.respondedAt;
+    if (allItemsResponded(items)) {
+      if (!respondedAt) {
+        respondedAt = now;
+      }
+    } else {
+      respondedAt = null;
+    }
+
+    const updated: MaterialRequest = {
+      ...current,
+      createdAt: current.createdAt,
+      respondedAt,
+      items,
+      customer:
+        input.customer !== undefined ? input.customer.trim() : current.customer,
+      poNumber:
+        input.poNumber !== undefined ? input.poNumber.trim() : current.poNumber,
+      department:
+        input.department !== undefined
+          ? input.department.trim()
+          : current.department,
+      requesterName:
+        input.requesterName !== undefined
+          ? input.requesterName.trim()
+          : current.requesterName,
+      status: input.status ?? current.status,
+      notes: input.notes !== undefined ? input.notes.trim() : current.notes,
+      updatedAt: now,
+    };
+
+    store.requests[index] = updated;
+    await persist(store.requests);
+    store.emitter.emit("change", { type: "updated", request: updated });
+    return updated;
+  });
 }
 
 export function subscribe(listener: (event: StoreEvent) => void) {

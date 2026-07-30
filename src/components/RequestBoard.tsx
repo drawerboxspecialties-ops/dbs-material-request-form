@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   EditRequestForm,
   type EditRequestPayload,
@@ -64,6 +64,7 @@ export function RequestBoard({
 }: RequestBoardProps) {
   const [filter, setFilter] = useState<BoardFilter>("awaiting");
   const [query, setQuery] = useState("");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [expandedReplies, setExpandedReplies] = useState<Record<string, boolean>>(
     {},
   );
@@ -123,6 +124,22 @@ export function RequestBoard({
     });
   }, [requests, filter, query]);
 
+  useEffect(() => {
+    if (highlightId) {
+      setSelectedId(highlightId);
+      return;
+    }
+    if (selectedId && filtered.some((request) => request.id === selectedId)) {
+      return;
+    }
+    setSelectedId(filtered[0]?.id ?? null);
+  }, [filtered, highlightId, selectedId]);
+
+  const selected = useMemo(
+    () => filtered.find((request) => request.id === selectedId) ?? null,
+    [filtered, selectedId],
+  );
+
   function toggleReply(itemId: string) {
     setExpandedReplies((current) => ({
       ...current,
@@ -169,52 +186,141 @@ export function RequestBoard({
   }
 
   return (
-    <section className="board">
-      <div className="board-header">
-        <div>
-          <h2>Live board</h2>
-          <p>
-            {openCount} open · {awaitingReply} awaiting · {requests.length} total
-          </p>
-        </div>
-        <div className="board-actions">
+    <>
+      <section className="panel panel-queue">
+        <div className="panel-heading queue-heading">
+          <div>
+            <h2>Queue</h2>
+            <p>
+              {awaitingReply} awaiting · {openCount} open · {requests.length}{" "}
+              total
+            </p>
+          </div>
           <div className={`live-pill${connected ? " on" : ""}`}>
             <span className="live-dot" aria-hidden />
             {connected ? "Live" : "Reconnecting…"}
           </div>
         </div>
-      </div>
 
-      <div className="board-toolbar">
-        <div className="filter-row" role="tablist" aria-label="Filter requests">
-          {(
-            [
-              ["awaiting", `Awaiting (${awaitingReply})`],
-              ["open", `Open (${openCount})`],
-              ["done", `Done (${doneCount})`],
-              ["all", `All (${requests.length})`],
-            ] as const
-          ).map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              role="tab"
-              aria-selected={filter === value}
-              className={filter === value ? "active" : ""}
-              onClick={() => setFilter(value)}
-            >
-              {label}
-            </button>
-          ))}
+        <div className="board-toolbar">
+          <div className="filter-row" role="tablist" aria-label="Filter requests">
+            {(
+              [
+                ["awaiting", `Awaiting (${awaitingReply})`],
+                ["open", `Open (${openCount})`],
+                ["done", `Done (${doneCount})`],
+                ["all", `All (${requests.length})`],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                role="tab"
+                aria-selected={filter === value}
+                className={filter === value ? "active" : ""}
+                onClick={() => setFilter(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <label className="search-field">
+            <span className="sr-only">Search requests</span>
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search customer, PO, product…"
+            />
+          </label>
         </div>
-        <label className="search-field">
-          <span className="sr-only">Search requests</span>
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search customer, PO, product, requester…"
-          />
-        </label>
+
+        {filtered.length === 0 ? (
+          <div className="empty-state compact">
+            <h3>
+              {requests.length === 0
+                ? "No requests yet"
+                : "Nothing matches this view"}
+            </h3>
+            <p>
+              {requests.length === 0
+                ? "Submit a request on the left — it will show up here live."
+                : "Try another filter or clear your search."}
+            </p>
+          </div>
+        ) : (
+          <ul className="queue-list" role="listbox" aria-label="Request queue">
+            {filtered.map((request) => {
+              const replied = repliedItemCount(request.items);
+              const complete = allItemsResponded(request.items);
+              const active = selectedId === request.id;
+
+              return (
+                <li key={request.id}>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={active}
+                    className={`queue-card status-${request.status}${
+                      active ? " active" : ""
+                    }${highlightId === request.id ? " flash" : ""}`}
+                    onClick={() => {
+                      setSelectedId(request.id);
+                      setEditingId(null);
+                    }}
+                  >
+                    <div className="queue-card-top">
+                      <strong>{request.customer || "Untitled customer"}</strong>
+                      <span className={`badge status-${request.status}`}>
+                        {statusLabel(request.status)}
+                      </span>
+                    </div>
+                    <div className="queue-card-meta">
+                      <span>PO {request.poNumber || "—"}</span>
+                      <span>·</span>
+                      <span>
+                        {request.items.length} line
+                        {request.items.length === 1 ? "" : "s"}
+                      </span>
+                      <span>·</span>
+                      <span>{request.requesterName}</span>
+                    </div>
+                    <div className="queue-card-footer">
+                      <div className="queue-type-row">
+                        {Array.from(
+                          new Set(
+                            request.items.map((item) => item.productType),
+                          ),
+                        ).map((type) => (
+                          <span key={type} className={`badge product-${type}`}>
+                            {PRODUCT_TYPE_LABELS[type]}
+                          </span>
+                        ))}
+                      </div>
+                      {complete ? (
+                        <span className="badge availability-available">
+                          Replied
+                        </span>
+                      ) : (
+                        <span className="badge awaiting-reply">
+                          {replied}/{request.items.length}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+
+      <section className="panel panel-detail">
+        <div className="panel-heading">
+          <div>
+            <h2>Detail</h2>
+            <p>Reply, edit, and update status for the selected request.</p>
+          </div>
+        </div>
 
         <div className={`manager-gate${managerUnlocked ? " unlocked" : ""}`}>
           {managerUnlocked ? (
@@ -231,7 +337,7 @@ export function RequestBoard({
             <form className="manager-gate-form" onSubmit={unlockManager}>
               <div>
                 <strong>Manager access</strong>
-                <p>Enter the manager password to reply or change status.</p>
+                <p>Enter password to reply or change status.</p>
               </div>
               <label className="field">
                 <span>Password</span>
@@ -253,244 +359,196 @@ export function RequestBoard({
             </form>
           )}
         </div>
-      </div>
 
-      {filtered.length === 0 ? (
-        <div className="empty-state">
-          <h3>
-            {requests.length === 0
-              ? "No requests yet"
-              : "Nothing matches this view"}
-          </h3>
-          <p>
-            {requests.length === 0
-              ? "Create the first material request and it will appear here live."
-              : "Try another filter or clear your search."}
-          </p>
-        </div>
-      ) : (
-        <ul className="request-list">
-          {filtered.map((request) => {
-            const replied = repliedItemCount(request.items);
-            const complete = allItemsResponded(request.items);
+        {!selected ? (
+          <div className="empty-state compact">
+            <h3>Select a request</h3>
+            <p>Pick one from the queue to review products and reply.</p>
+          </div>
+        ) : (
+          <article
+            className={`detail-card status-${selected.status}${
+              highlightId === selected.id ? " flash" : ""
+            }`}
+          >
+            <div className="detail-title-row">
+              <div>
+                <h3>{selected.customer || "Untitled customer"}</h3>
+                <p className="request-meta">
+                  <span>PO {selected.poNumber || "—"}</span>
+                  <span>·</span>
+                  <span>{selected.department}</span>
+                  <span>·</span>
+                  <span>{selected.requesterName}</span>
+                </p>
+              </div>
+              <span className={`badge status-${selected.status}`}>
+                {statusLabel(selected.status)}
+              </span>
+            </div>
 
-            return (
-              <li
-                key={request.id}
-                className={`request-row status-${request.status}${
-                  highlightId === request.id ? " flash" : ""
-                }`}
-              >
-                <div className="request-main">
-                  <div className="request-title-row">
-                    <h3>{request.customer || "Untitled customer"}</h3>
-                    <span className="badge po-badge">
-                      PO {request.poNumber || "—"}
-                    </span>
-                    {Array.from(
-                      new Set(request.items.map((item) => item.productType)),
-                    ).map((type) => (
-                      <span key={type} className={`badge product-${type}`}>
-                        {PRODUCT_TYPE_LABELS[type]}
-                      </span>
-                    ))}
-                    <span className={`badge status-${request.status}`}>
-                      {statusLabel(request.status)}
-                    </span>
-                    {!complete ? (
-                      <span className="badge awaiting-reply">
-                        {replied}/{request.items.length} replied
-                      </span>
+            <div className="order-context" aria-label="Order details">
+              <div>
+                <span>Customer</span>
+                <strong>{selected.customer || "—"}</strong>
+              </div>
+              <div>
+                <span>PO</span>
+                <strong>{selected.poNumber || "—"}</strong>
+              </div>
+            </div>
+
+            {selected.notes ? (
+              <p className="request-notes">{selected.notes}</p>
+            ) : null}
+
+            <div className="date-locks" aria-label="Request dates">
+              <div className="date-lock">
+                <span>Submitted</span>
+                <strong>{formatTime(selected.createdAt)}</strong>
+              </div>
+              <div className="date-lock">
+                <span>Last edited</span>
+                <strong>{formatTime(selected.updatedAt)}</strong>
+              </div>
+              <div className="date-lock">
+                <span>Responded</span>
+                <strong>
+                  {selected.respondedAt
+                    ? formatTime(selected.respondedAt)
+                    : `— ${repliedItemCount(selected.items)}/${selected.items.length} replied`}
+                </strong>
+              </div>
+            </div>
+
+            <div className="detail-actions">
+              {editingId === selected.id ? null : (
+                <button
+                  type="button"
+                  className="ghost-btn"
+                  onClick={() => setEditingId(selected.id)}
+                >
+                  Edit request
+                </button>
+              )}
+              <label className="status-control inline">
+                <span>Status</span>
+                <select
+                  value={selected.status}
+                  disabled={!managerUnlocked}
+                  onChange={(event) => {
+                    void onStatusChange(
+                      selected.id,
+                      event.target.value as RequestStatus,
+                      managerPassword,
+                    );
+                  }}
+                >
+                  {STATUS_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            {editingId === selected.id ? (
+              <EditRequestForm
+                request={selected}
+                onCancel={() => setEditingId(null)}
+                onSave={async (id, payload) => {
+                  await onEditRequest(id, payload);
+                  setEditingId(null);
+                }}
+              />
+            ) : null}
+
+            <ul className="line-items">
+              {selected.items.map((item) => {
+                const replyOpen = expandedReplies[item.id] ?? false;
+
+                return (
+                  <li key={item.id} className="line-item">
+                    <div className="line-item-header">
+                      <div>
+                        <strong>{item.productName}</strong>
+                        <p>
+                          {PRODUCT_TYPE_LABELS[item.productType]} ·{" "}
+                          {item.quantity} {item.unit}
+                        </p>
+                        {item.productType === "material" &&
+                        formatMaterialSpec(item) ? (
+                          <p className="line-item-spec">
+                            Core / Color: {formatMaterialSpec(item)}
+                          </p>
+                        ) : null}
+                        {item.productType === "edgeband" && item.matchToSheet ? (
+                          <p className="line-item-spec">
+                            Match to sheet: {item.matchToSheet}
+                          </p>
+                        ) : null}
+                      </div>
+                      {item.managerResponse ? (
+                        <span
+                          className={`badge availability-${item.managerResponse.availability}`}
+                        >
+                          {
+                            AVAILABILITY_LABELS[
+                              item.managerResponse.availability
+                            ]
+                          }
+                        </span>
+                      ) : (
+                        <span className="badge awaiting-reply">
+                          Awaiting reply
+                        </span>
+                      )}
+                    </div>
+
+                    {item.managerResponse ? (
+                      <ManagerResponseSummary
+                        response={item.managerResponse}
+                        submittedAt={selected.createdAt}
+                        productLabel={PRODUCT_TYPE_LABELS[item.productType]}
+                      />
+                    ) : null}
+
+                    {managerUnlocked ? (
+                      <>
+                        <button
+                          type="button"
+                          className="reply-toggle"
+                          onClick={() => toggleReply(item.id)}
+                        >
+                          {replyOpen
+                            ? "Hide manager reply form"
+                            : item.managerResponse
+                              ? "Update manager reply"
+                              : "Reply as manager"}
+                        </button>
+
+                        {replyOpen ? (
+                          <ManagerReplyForm
+                            request={selected}
+                            item={item}
+                            managerPassword={managerPassword}
+                            onSubmit={onManagerReply}
+                          />
+                        ) : null}
+                      </>
                     ) : (
-                      <span className="badge availability-available">
-                        Fully replied
-                      </span>
+                      <p className="manager-locked-note">
+                        Unlock manager access above to reply.
+                      </p>
                     )}
-                  </div>
-
-                  <p className="request-meta">
-                    <span>
-                      {request.items.length} product
-                      {request.items.length === 1 ? "" : "s"}
-                    </span>
-                    <span>·</span>
-                    <span>{request.department}</span>
-                    <span>·</span>
-                    <span>{request.requesterName}</span>
-                  </p>
-
-                  <div className="order-context" aria-label="Order details">
-                    <div>
-                      <span>Customer</span>
-                      <strong>{request.customer || "—"}</strong>
-                    </div>
-                    <div>
-                      <span>PO</span>
-                      <strong>{request.poNumber || "—"}</strong>
-                    </div>
-                  </div>
-
-                  {request.notes ? (
-                    <p className="request-notes">{request.notes}</p>
-                  ) : null}
-
-                  <div className="date-locks" aria-label="Request dates">
-                    <div className="date-lock">
-                      <span>Submitted</span>
-                      <strong>{formatTime(request.createdAt)}</strong>
-                    </div>
-                    <div className="date-lock">
-                      <span>Last edited</span>
-                      <strong>{formatTime(request.updatedAt)}</strong>
-                    </div>
-                    <div className="date-lock">
-                      <span>Responded</span>
-                      <strong>
-                        {request.respondedAt
-                          ? formatTime(request.respondedAt)
-                          : `— ${replied}/${request.items.length} products replied`}
-                      </strong>
-                    </div>
-                  </div>
-
-                  <div className="request-edit-bar">
-                    {editingId === request.id ? null : (
-                      <button
-                        type="button"
-                        className="ghost-btn"
-                        onClick={() => setEditingId(request.id)}
-                      >
-                        Edit request
-                      </button>
-                    )}
-                  </div>
-
-                  {editingId === request.id ? (
-                    <EditRequestForm
-                      request={request}
-                      onCancel={() => setEditingId(null)}
-                      onSave={async (id, payload) => {
-                        await onEditRequest(id, payload);
-                        setEditingId(null);
-                      }}
-                    />
-                  ) : null}
-
-                  <ul className="line-items">
-                    {request.items.map((item) => {
-                      const replyOpen = expandedReplies[item.id] ?? false;
-
-                      return (
-                        <li key={item.id} className="line-item">
-                          <div className="line-item-header">
-                            <div>
-                              <strong>{item.productName}</strong>
-                              <p>
-                                {PRODUCT_TYPE_LABELS[item.productType]} ·{" "}
-                                {item.quantity} {item.unit}
-                              </p>
-                              {item.productType === "material" &&
-                              formatMaterialSpec(item) ? (
-                                <p className="line-item-spec">
-                                  Core / Color: {formatMaterialSpec(item)}
-                                </p>
-                              ) : null}
-                              {item.productType === "edgeband" &&
-                              item.matchToSheet ? (
-                                <p className="line-item-spec">
-                                  Match to sheet: {item.matchToSheet}
-                                </p>
-                              ) : null}
-                            </div>
-                            {item.managerResponse ? (
-                              <span
-                                className={`badge availability-${item.managerResponse.availability}`}
-                              >
-                                {
-                                  AVAILABILITY_LABELS[
-                                    item.managerResponse.availability
-                                  ]
-                                }
-                              </span>
-                            ) : (
-                              <span className="badge awaiting-reply">
-                                Awaiting reply
-                              </span>
-                            )}
-                          </div>
-
-                          {item.managerResponse ? (
-                            <ManagerResponseSummary
-                              response={item.managerResponse}
-                              submittedAt={request.createdAt}
-                              productLabel={
-                                PRODUCT_TYPE_LABELS[item.productType]
-                              }
-                            />
-                          ) : null}
-
-                          {managerUnlocked ? (
-                            <>
-                              <button
-                                type="button"
-                                className="reply-toggle"
-                                onClick={() => toggleReply(item.id)}
-                              >
-                                {replyOpen
-                                  ? "Hide manager reply form"
-                                  : item.managerResponse
-                                    ? "Update manager reply"
-                                    : "Reply as manager"}
-                              </button>
-
-                              {replyOpen ? (
-                                <ManagerReplyForm
-                                  request={request}
-                                  item={item}
-                                  managerPassword={managerPassword}
-                                  onSubmit={onManagerReply}
-                                />
-                              ) : null}
-                            </>
-                          ) : (
-                            <p className="manager-locked-note">
-                              Unlock manager access above to reply.
-                            </p>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-
-                <label className="status-control">
-                  <span>Quick status</span>
-                  <select
-                    value={request.status}
-                    disabled={!managerUnlocked}
-                    onChange={(event) => {
-                      void onStatusChange(
-                        request.id,
-                        event.target.value as RequestStatus,
-                        managerPassword,
-                      );
-                    }}
-                  >
-                    {STATUS_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  {!managerUnlocked ? (
-                    <em className="locked-hint">Manager unlock required</em>
-                  ) : null}
-                </label>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </section>
+                  </li>
+                );
+              })}
+            </ul>
+          </article>
+        )}
+      </section>
+    </>
   );
 }

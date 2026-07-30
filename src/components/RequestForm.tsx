@@ -6,6 +6,7 @@ import {
   PRODUCT_TYPE_LABELS,
   PRODUCT_UNITS,
   describeSheetMatch,
+  type MaterialRequest,
   type ProductType,
 } from "@/lib/types";
 
@@ -40,7 +41,7 @@ function newDraftItem(productType: ProductType = "material"): DraftItem {
 }
 
 type RequestFormProps = {
-  onCreated?: (requestId: string) => void;
+  onCreated?: (request: MaterialRequest) => void;
 };
 
 export function RequestForm({ onCreated }: RequestFormProps) {
@@ -178,7 +179,7 @@ export function RequestForm({ onCreated }: RequestFormProps) {
 
       const data = (await response.json()) as {
         error?: string;
-        request?: { id: string };
+        request?: MaterialRequest;
       };
       if (!response.ok || !data.request) {
         throw new Error(data.error ?? "Failed to submit request");
@@ -188,7 +189,7 @@ export function RequestForm({ onCreated }: RequestFormProps) {
       setCustomer("");
       setPoNumber("");
       setNotes("");
-      onCreated?.(data.request.id);
+      onCreated?.(data.request);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -273,14 +274,6 @@ export function RequestForm({ onCreated }: RequestFormProps) {
               {typeSummary ? ` · ${typeSummary}` : ""}
             </p>
           </div>
-        </div>
-
-        <div className="multi-type-callout">
-          <strong>One request, multiple product types</strong>
-          <p>
-            Add as many lines as you need. Each line can be Material (sheets),
-            Hardware (pcs), or Edgeband (feet).
-          </p>
         </div>
 
         <div className="draft-items">

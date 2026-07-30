@@ -9,36 +9,66 @@ export async function GET() {
   const encoder = new TextEncoder();
   let cleanup: (() => void) | undefined;
   let heartbeat: ReturnType<typeof setInterval> | undefined;
+  let poll: ReturnType<typeof setInterval> | undefined;
+  let lastFingerprint = "";
 
   const stream = new ReadableStream({
-    start(controller) {
+    async start(controller) {
       const send = (event: StoreEvent) => {
         controller.enqueue(
           encoder.encode(`data: ${JSON.stringify(event)}\n\n`),
         );
       };
 
-      send({ type: "snapshot", requests: listRequests() });
+      const fingerprint = (
+        requests: Awaited<ReturnType<typeof listRequests>>,
+      ) =>
+        requests
+          .map((item) => `${item.id}:${item.updatedAt}`)
+          .sort()
+          .join("|");
+
+      const pushSnapshot = async () => {
+        const requests = await listRequests();
+        const next = fingerprint(requests);
+        if (next === lastFingerprint) return;
+        lastFingerprint = next;
+        send({ type: "snapshot", requests });
+      };
+
+      await pushSnapshot();
 
       cleanup = subscribe((event) => {
         try {
+          if (event.type === "created" || event.type === "updated") {
+            lastFingerprint = "";
+          }
           send(event);
         } catch {
           cleanup?.();
         }
       });
 
+      // Cross-instance sync on Vercel: poll shared storage periodically.
+      poll = setInterval(() => {
+        void pushSnapshot().catch(() => {
+          if (poll) clearInterval(poll);
+        });
+      }, 2500);
+
       heartbeat = setInterval(() => {
         try {
           controller.enqueue(encoder.encode(`: ping\n\n`));
         } catch {
           if (heartbeat) clearInterval(heartbeat);
+          if (poll) clearInterval(poll);
           cleanup?.();
         }
       }, 15000);
     },
     cancel() {
       if (heartbeat) clearInterval(heartbeat);
+      if (poll) clearInterval(poll);
       cleanup?.();
     },
   });

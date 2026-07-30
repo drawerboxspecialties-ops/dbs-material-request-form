@@ -180,7 +180,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
   }
 
-  const updated = updateRequest(id, input);
+  const updated = await updateRequest(id, input);
   if (!updated) {
     return NextResponse.json({ error: "Request not found" }, { status: 404 });
   }
