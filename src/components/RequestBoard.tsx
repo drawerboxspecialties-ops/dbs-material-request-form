@@ -192,9 +192,12 @@ export function RequestBoard({
     setExpandedReplies({});
   }
 
-  async function handleDelete() {
-    if (!selected || !managerUnlocked) return;
-    const label = `${selected.customer || "Untitled"} / PO ${selected.poNumber || "—"}`;
+  async function handleDelete(request: MaterialRequest) {
+    if (!managerUnlocked) {
+      setDeleteError("Unlock manager access to delete requests.");
+      return;
+    }
+    const label = `${request.customer || "Untitled"} / PO ${request.poNumber || "—"}`;
     const confirmed = window.confirm(
       `Delete this request?\n\n${label}\n\nThis cannot be undone.`,
     );
@@ -203,9 +206,11 @@ export function RequestBoard({
     setDeleting(true);
     setDeleteError(null);
     try {
-      await onDeleteRequest(selected.id, managerPassword);
+      await onDeleteRequest(request.id, managerPassword);
       setEditingId(null);
-      setSelectedId(null);
+      if (selectedId === request.id) {
+        setSelectedId(null);
+      }
     } catch (err) {
       setDeleteError(
         err instanceof Error ? err.message : "Could not delete request",
@@ -213,6 +218,18 @@ export function RequestBoard({
     } finally {
       setDeleting(false);
     }
+  }
+
+  function openEdit(request: MaterialRequest) {
+    setSelectedId(request.id);
+    setEditingId(request.id);
+    setDeleteError(null);
+  }
+
+  function selectRequest(requestId: string) {
+    setSelectedId(requestId);
+    setEditingId(null);
+    setDeleteError(null);
   }
 
   return (
@@ -262,6 +279,47 @@ export function RequestBoard({
               placeholder="Search customer, PO, product…"
             />
           </label>
+
+          <div className={`manager-gate${managerUnlocked ? " unlocked" : ""}`}>
+            {managerUnlocked ? (
+              <div className="manager-gate-row">
+                <p>
+                  <strong>Manager mode on</strong>
+                  <span>Edit, reply, status, and delete unlocked.</span>
+                </p>
+                <button type="button" className="ghost-btn" onClick={lockManager}>
+                  Lock
+                </button>
+              </div>
+            ) : (
+              <form className="manager-gate-form" onSubmit={unlockManager}>
+                <div>
+                  <strong>Manager access</strong>
+                  <p>Unlock to delete or reply from the queue.</p>
+                </div>
+                <label className="field">
+                  <span>Password</span>
+                  <input
+                    type="password"
+                    autoComplete="current-password"
+                    value={passwordDraft}
+                    onChange={(e) => setPasswordDraft(e.target.value)}
+                    placeholder="Manager password"
+                    required
+                  />
+                </label>
+                <button className="reply-btn" type="submit" disabled={unlocking}>
+                  {unlocking ? "Checking…" : "Unlock"}
+                </button>
+                {unlockError ? (
+                  <p className="form-message error">{unlockError}</p>
+                ) : null}
+              </form>
+            )}
+          </div>
+          {deleteError ? (
+            <p className="form-message error">{deleteError}</p>
+          ) : null}
         </div>
 
         {filtered.length === 0 ? (
@@ -286,58 +344,97 @@ export function RequestBoard({
 
               return (
                 <li key={request.id}>
-                  <button
-                    type="button"
-                    role="option"
-                    aria-selected={active}
+                  <div
                     className={`queue-card status-${request.status}${
                       active ? " active" : ""
                     }${highlightId === request.id ? " flash" : ""}`}
-                    onClick={() => {
-                      setSelectedId(request.id);
-                      setEditingId(null);
-                      setDeleteError(null);
-                    }}
                   >
-                    <div className="queue-card-top">
-                      <strong>{request.customer || "Untitled customer"}</strong>
-                      <span className={`badge status-${request.status}`}>
-                        {statusLabel(request.status)}
-                      </span>
-                    </div>
-                    <div className="queue-card-meta">
-                      <span>PO {request.poNumber || "—"}</span>
-                      <span>·</span>
-                      <span>
-                        {request.items.length} line
-                        {request.items.length === 1 ? "" : "s"}
-                      </span>
-                      <span>·</span>
-                      <span>{request.requesterName}</span>
-                    </div>
-                    <div className="queue-card-footer">
-                      <div className="queue-type-row">
-                        {Array.from(
-                          new Set(
-                            request.items.map((item) => item.productType),
-                          ),
-                        ).map((type) => (
-                          <span key={type} className={`badge product-${type}`}>
-                            {PRODUCT_TYPE_LABELS[type]}
-                          </span>
-                        ))}
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={active}
+                      className="queue-card-main"
+                      onClick={() => selectRequest(request.id)}
+                    >
+                      <div className="queue-card-top">
+                        <strong>
+                          {request.customer || "Untitled customer"}
+                        </strong>
+                        <span className={`badge status-${request.status}`}>
+                          {statusLabel(request.status)}
+                        </span>
                       </div>
-                      {complete ? (
-                        <span className="badge availability-available">
-                          Replied
+                      <div className="queue-card-meta">
+                        <span>PO {request.poNumber || "—"}</span>
+                        <span>·</span>
+                        <span>
+                          {request.items.length} line
+                          {request.items.length === 1 ? "" : "s"}
                         </span>
-                      ) : (
-                        <span className="badge awaiting-reply">
-                          {replied}/{request.items.length}
-                        </span>
-                      )}
+                        <span>·</span>
+                        <span>{request.requesterName}</span>
+                      </div>
+                      <div className="queue-card-footer">
+                        <div className="queue-type-row">
+                          {Array.from(
+                            new Set(
+                              request.items.map((item) => item.productType),
+                            ),
+                          ).map((type) => (
+                            <span
+                              key={type}
+                              className={`badge product-${type}`}
+                            >
+                              {PRODUCT_TYPE_LABELS[type]}
+                            </span>
+                          ))}
+                        </div>
+                        {complete ? (
+                          <span className="badge availability-available">
+                            Replied
+                          </span>
+                        ) : (
+                          <span className="badge awaiting-reply">
+                            {replied}/{request.items.length}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+
+                    <div className="queue-card-actions">
+                      <button
+                        type="button"
+                        className="ghost-btn"
+                        onClick={() => onCopyRequest(request)}
+                      >
+                        Copy
+                      </button>
+                      <button
+                        type="button"
+                        className="ghost-btn"
+                        onClick={() => openEdit(request)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="danger-btn"
+                        disabled={deleting || !managerUnlocked}
+                        title={
+                          managerUnlocked
+                            ? "Delete request"
+                            : "Unlock manager access to delete"
+                        }
+                        onClick={() => {
+                          void handleDelete(request);
+                        }}
+                      >
+                        {deleting && selectedId === request.id
+                          ? "…"
+                          : "Delete"}
+                      </button>
                     </div>
-                  </button>
+                  </div>
                 </li>
               );
             })}
@@ -351,43 +448,10 @@ export function RequestBoard({
             <h2>Detail</h2>
             <p>Reply, edit, and update status for the selected request.</p>
           </div>
-        </div>
-
-        <div className={`manager-gate${managerUnlocked ? " unlocked" : ""}`}>
           {managerUnlocked ? (
-            <div className="manager-gate-row">
-              <p>
-                <strong>Manager mode on</strong>
-                <span>You can reply, update status, and delete.</span>
-              </p>
-              <button type="button" className="ghost-btn" onClick={lockManager}>
-                Lock
-              </button>
-            </div>
+            <span className="badge availability-available">Manager on</span>
           ) : (
-            <form className="manager-gate-form" onSubmit={unlockManager}>
-              <div>
-                <strong>Manager access</strong>
-                <p>Enter password to reply or change status.</p>
-              </div>
-              <label className="field">
-                <span>Password</span>
-                <input
-                  type="password"
-                  autoComplete="current-password"
-                  value={passwordDraft}
-                  onChange={(e) => setPasswordDraft(e.target.value)}
-                  placeholder="Manager password"
-                  required
-                />
-              </label>
-              <button className="reply-btn" type="submit" disabled={unlocking}>
-                {unlocking ? "Checking…" : "Unlock"}
-              </button>
-              {unlockError ? (
-                <p className="form-message error">{unlockError}</p>
-              ) : null}
-            </form>
+            <span className="badge awaiting-reply">Manager locked</span>
           )}
         </div>
 
@@ -464,7 +528,7 @@ export function RequestBoard({
                 <button
                   type="button"
                   className="ghost-btn"
-                  onClick={() => setEditingId(selected.id)}
+                  onClick={() => openEdit(selected)}
                 >
                   Edit request
                 </button>
@@ -489,22 +553,22 @@ export function RequestBoard({
                   ))}
                 </select>
               </label>
-              {managerUnlocked ? (
-                <button
-                  type="button"
-                  className="danger-btn"
-                  disabled={deleting}
-                  onClick={() => {
-                    void handleDelete();
-                  }}
-                >
-                  {deleting ? "Deleting…" : "Delete request"}
-                </button>
-              ) : null}
+              <button
+                type="button"
+                className="danger-btn"
+                disabled={deleting || !managerUnlocked}
+                title={
+                  managerUnlocked
+                    ? "Delete request"
+                    : "Unlock manager access in Queue to delete"
+                }
+                onClick={() => {
+                  void handleDelete(selected);
+                }}
+              >
+                {deleting ? "Deleting…" : "Delete request"}
+              </button>
             </div>
-            {deleteError ? (
-              <p className="form-message error">{deleteError}</p>
-            ) : null}
 
             {editingId === selected.id ? (
               <EditRequestForm

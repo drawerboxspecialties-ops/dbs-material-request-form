@@ -306,6 +306,13 @@ textarea {
   align-items: flex-start;
 }
 
+.panel-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
 .queue-list {
   list-style: none;
   margin: 0;
@@ -320,8 +327,7 @@ textarea {
   border: 1px solid var(--line);
   border-radius: 10px;
   background: #fff;
-  padding: 0.55rem 0.6rem;
-  cursor: pointer;
+  padding: 0.45rem 0.5rem 0.4rem;
   transition:
     border-color 140ms var(--ease),
     background 140ms var(--ease),
@@ -342,6 +348,31 @@ textarea {
 
 .queue-card.flash {
   animation: flash-row 1.2s var(--ease);
+}
+
+.queue-card-main {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0.15rem 0.1rem 0.35rem;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+}
+
+.queue-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.28rem;
+  padding-top: 0.3rem;
+  border-top: 1px solid rgba(18, 32, 41, 0.08);
+}
+
+.queue-card-actions .ghost-btn,
+.queue-card-actions .danger-btn {
+  padding: 0.2rem 0.45rem;
+  font-size: 0.72rem;
 }
 
 .queue-card-top,
