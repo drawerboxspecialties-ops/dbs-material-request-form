@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   PRODUCT_TYPES,
   PRODUCT_TYPE_LABELS,
@@ -27,6 +27,21 @@ type DraftItem = {
   matchedDraftKey: string;
 };
 
+export type RequestFormDraft = {
+  customer: string;
+  poNumber: string;
+  department: string;
+  requesterName: string;
+  notes: string;
+  items: DraftItem[];
+};
+
+export type RequestFormSeed = {
+  id: string;
+  draft: RequestFormDraft;
+  notice?: string;
+};
+
 function newDraftItem(productType: ProductType = "material"): DraftItem {
   return {
     key: crypto.randomUUID(),
@@ -40,11 +55,67 @@ function newDraftItem(productType: ProductType = "material"): DraftItem {
   };
 }
 
+export function emptyRequestFormDraft(): RequestFormDraft {
+  return {
+    customer: "",
+    poNumber: "",
+    department: "",
+    requesterName: "",
+    notes: "",
+    items: [newDraftItem()],
+  };
+}
+
+export function buildFormDraftFromRequest(
+  request: MaterialRequest,
+): RequestFormDraft {
+  const keyByOldId = new Map<string, string>();
+  const items: DraftItem[] = request.items.map((item) => {
+    const key = crypto.randomUUID();
+    keyByOldId.set(item.id, key);
+    return {
+      key,
+      productType: item.productType,
+      productName: item.productName,
+      quantity: String(item.quantity),
+      core: item.core ?? "",
+      color: item.color ?? "",
+      matchToSheet: item.matchToSheet ?? "",
+      matchedDraftKey: "",
+    };
+  });
+
+  request.items.forEach((item, index) => {
+    if (!item.matchedItemId) return;
+    const matchedKey = keyByOldId.get(item.matchedItemId);
+    if (!matchedKey) return;
+    items[index] = {
+      ...items[index],
+      matchedDraftKey: matchedKey,
+    };
+  });
+
+  return {
+    customer: request.customer,
+    poNumber: request.poNumber,
+    department: request.department,
+    requesterName: request.requesterName,
+    notes: request.notes,
+    items: items.length > 0 ? items : [newDraftItem()],
+  };
+}
+
 type RequestFormProps = {
   onCreated?: (request: MaterialRequest) => void;
+  seed?: RequestFormSeed | null;
+  onSeedApplied?: () => void;
 };
 
-export function RequestForm({ onCreated }: RequestFormProps) {
+export function RequestForm({
+  onCreated,
+  seed = null,
+  onSeedApplied,
+}: RequestFormProps) {
   const [items, setItems] = useState<DraftItem[]>([newDraftItem()]);
   const [customer, setCustomer] = useState("");
   const [poNumber, setPoNumber] = useState("");
@@ -53,6 +124,40 @@ export function RequestForm({ onCreated }: RequestFormProps) {
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const lastSeedId = useRef<string | null>(null);
+
+  function applyDraft(
+    draft: RequestFormDraft,
+    nextNotice: string | null = null,
+  ) {
+    setCustomer(draft.customer);
+    setPoNumber(draft.poNumber);
+    setDepartment(draft.department);
+    setRequesterName(draft.requesterName);
+    setNotes(draft.notes);
+    setItems(
+      draft.items.length > 0
+        ? draft.items.map((item) => ({
+            ...item,
+            key: item.key || crypto.randomUUID(),
+          }))
+        : [newDraftItem()],
+    );
+    setError(null);
+    setNotice(nextNotice);
+  }
+
+  function resetForm() {
+    applyDraft(emptyRequestFormDraft());
+  }
+
+  useEffect(() => {
+    if (!seed || seed.id === lastSeedId.current) return;
+    lastSeedId.current = seed.id;
+    applyDraft(seed.draft, seed.notice ?? "Copied into a new request draft.");
+    onSeedApplied?.();
+  }, [seed, onSeedApplied]);
 
   const typeSummary = useMemo(() => {
     const types = new Set(items.map((item) => item.productType));
@@ -152,7 +257,8 @@ export function RequestForm({ onCreated }: RequestFormProps) {
           productName: item.productName.trim(),
           quantity: Number(item.quantity),
           core: item.productType === "material" ? item.core.trim() : undefined,
-          color: item.productType === "material" ? item.color.trim() : undefined,
+          color:
+            item.productType === "material" ? item.color.trim() : undefined,
           matchToSheet:
             item.productType === "edgeband"
               ? item.matchToSheet.trim()
@@ -189,6 +295,7 @@ export function RequestForm({ onCreated }: RequestFormProps) {
       setCustomer("");
       setPoNumber("");
       setNotes("");
+      setNotice(null);
       onCreated?.(data.request);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -199,6 +306,12 @@ export function RequestForm({ onCreated }: RequestFormProps) {
 
   return (
     <form className="request-form" onSubmit={handleSubmit}>
+      {notice ? (
+        <p className="form-notice" role="status">
+          {notice}
+        </p>
+      ) : null}
+
       <section className="form-section">
         <div className="section-label">
           <span>1</span>
@@ -486,9 +599,19 @@ export function RequestForm({ onCreated }: RequestFormProps) {
             {typeSummary ? ` (${typeSummary})` : ""}
           </p>
         </div>
-        <button className="submit-btn" type="submit" disabled={submitting}>
-          {submitting ? "Submitting…" : "Submit request"}
-        </button>
+        <div className="form-action-row">
+          <button
+            type="button"
+            className="ghost-btn"
+            onClick={resetForm}
+            disabled={submitting}
+          >
+            Clear form
+          </button>
+          <button className="submit-btn" type="submit" disabled={submitting}>
+            {submitting ? "Submitting…" : "Submit request"}
+          </button>
+        </div>
         {error ? <p className="form-message error">{error}</p> : null}
       </div>
     </form>

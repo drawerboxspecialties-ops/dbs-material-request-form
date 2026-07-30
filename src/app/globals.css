@@ -829,6 +829,27 @@ textarea {
   font-size: 0.75rem;
 }
 
+.form-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.form-action-row .submit-btn {
+  flex: 1 1 10rem;
+}
+
+.form-notice {
+  margin: 0 0 0.55rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid rgba(10, 84, 112, 0.22);
+  background: rgba(10, 84, 112, 0.07);
+  color: var(--brand-deep);
+  font-size: 0.78rem;
+}
+
 .submit-btn,
 .reply-btn {
   border: 0;

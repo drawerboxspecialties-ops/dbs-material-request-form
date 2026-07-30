@@ -4,7 +4,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { EditRequestPayload } from "@/components/EditRequestForm";
 import type { ManagerReplyPayload } from "@/components/ManagerReplyForm";
 import { RequestBoard } from "@/components/RequestBoard";
-import { RequestForm } from "@/components/RequestForm";
+import {
+  RequestForm,
+  buildFormDraftFromRequest,
+  type RequestFormSeed,
+} from "@/components/RequestForm";
 import {
   allItemsResponded,
   type MaterialRequest,
@@ -30,6 +34,7 @@ export function LiveApp() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [flashRequestId, setFlashRequestId] = useState<string | null>(null);
+  const [formSeed, setFormSeed] = useState<RequestFormSeed | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -205,6 +210,20 @@ export function LiveApp() {
     [],
   );
 
+  const handleCopyRequest = useCallback((request: MaterialRequest) => {
+    setFormSeed({
+      id: crypto.randomUUID(),
+      draft: buildFormDraftFromRequest(request),
+      notice: `Copied from ${request.customer || "request"} / PO ${request.poNumber || "—"}. Edit and submit as a new request.`,
+    });
+    setToast("Request copied into the new-request form");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  const clearFormSeed = useCallback(() => {
+    setFormSeed(null);
+  }, []);
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -252,6 +271,8 @@ export function LiveApp() {
             </div>
           </div>
           <RequestForm
+            seed={formSeed}
+            onSeedApplied={clearFormSeed}
             onCreated={(request) => {
               setRequests((current) => upsertRequest(current, request));
               setFlashRequestId(request.id);
@@ -268,6 +289,7 @@ export function LiveApp() {
           onManagerReply={handleManagerReply}
           onEditRequest={handleEditRequest}
           onDeleteRequest={handleDeleteRequest}
+          onCopyRequest={handleCopyRequest}
         />
       </main>
     </div>

@@ -53,6 +53,7 @@ type RequestBoardProps = {
   onManagerReply: (id: string, payload: ManagerReplyPayload) => Promise<void>;
   onEditRequest: (id: string, payload: EditRequestPayload) => Promise<void>;
   onDeleteRequest: (id: string, managerPassword: string) => Promise<void>;
+  onCopyRequest: (request: MaterialRequest) => void;
 };
 
 export function RequestBoard({
@@ -63,6 +64,7 @@ export function RequestBoard({
   onManagerReply,
   onEditRequest,
   onDeleteRequest,
+  onCopyRequest,
 }: RequestBoardProps) {
   const [filter, setFilter] = useState<BoardFilter>("awaiting");
   const [query, setQuery] = useState("");
@@ -451,6 +453,13 @@ export function RequestBoard({
             </div>
 
             <div className="detail-actions">
+              <button
+                type="button"
+                className="ghost-btn"
+                onClick={() => onCopyRequest(selected)}
+              >
+                Copy to new
+              </button>
               {editingId === selected.id ? null : (
                 <button
                   type="button"
