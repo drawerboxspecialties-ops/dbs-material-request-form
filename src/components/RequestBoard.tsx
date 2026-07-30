@@ -360,9 +360,6 @@ export function RequestBoard({
                         <strong>
                           {request.customer || "Untitled customer"}
                         </strong>
-                        <span className={`badge status-${request.status}`}>
-                          {statusLabel(request.status)}
-                        </span>
                       </div>
                       <div className="queue-card-meta">
                         <span>PO {request.poNumber || "—"}</span>
@@ -477,9 +474,6 @@ export function RequestBoard({
                   <span>{selected.requesterName}</span>
                 </p>
               </div>
-              <span className={`badge status-${selected.status}`}>
-                {statusLabel(selected.status)}
-              </span>
             </div>
 
             <div className="order-context" aria-label="Order details">
