@@ -37,10 +37,6 @@ function formatTime(value: string) {
   }).format(new Date(value));
 }
 
-function statusLabel(status: RequestStatus) {
-  return STATUS_OPTIONS.find((item) => item.value === status)?.label ?? status;
-}
-
 type RequestBoardProps = {
   requests: MaterialRequest[];
   connected: boolean;
