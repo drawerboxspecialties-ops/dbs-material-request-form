@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
+import { parseRequestItems } from "@/lib/parseItems";
 import { createRequest, listRequests } from "@/lib/store";
 import {
   PRIORITIES,
   isProductType,
   type CreateMaterialRequestInput,
-  type CreateRequestItemInput,
 } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -16,74 +16,6 @@ function isPriority(
   return (
     typeof value === "string" && (PRIORITIES as readonly string[]).includes(value)
   );
-}
-
-function parseItems(raw: unknown): CreateRequestItemInput[] | null {
-  if (!Array.isArray(raw) || raw.length === 0) return null;
-
-  const items: CreateRequestItemInput[] = [];
-  for (const [index, entry] of raw.entries()) {
-    if (!entry || typeof entry !== "object") return null;
-    const value = entry as Record<string, unknown>;
-    const productType = value.productType;
-    const productName = String(value.productName ?? "").trim();
-    const quantity = Number(value.quantity);
-    const core = String(value.core ?? "").trim();
-    const color = String(value.color ?? "").trim();
-    const matchToSheet = String(value.matchToSheet ?? "").trim();
-    const matchedItemIndexRaw = value.matchedItemIndex;
-    const matchedItemIndex =
-      matchedItemIndexRaw === null || matchedItemIndexRaw === undefined
-        ? null
-        : Number(matchedItemIndexRaw);
-
-    if (!isProductType(productType) || !productName) return null;
-    if (!Number.isFinite(quantity) || quantity <= 0) return null;
-    if (productType === "hardware" && !Number.isInteger(quantity)) return null;
-
-    if (productType === "material" && (!core || !color)) {
-      return null;
-    }
-
-    if (productType === "edgeband" && !matchToSheet) {
-      return null;
-    }
-
-    if (
-      matchedItemIndex !== null &&
-      (!Number.isInteger(matchedItemIndex) ||
-        matchedItemIndex < 0 ||
-        matchedItemIndex >= raw.length ||
-        matchedItemIndex === index)
-    ) {
-      return null;
-    }
-
-    items.push({
-      productType,
-      productName,
-      quantity,
-      core: productType === "material" ? core : undefined,
-      color: productType === "material" ? color : undefined,
-      matchToSheet: productType === "edgeband" ? matchToSheet : undefined,
-      matchedItemIndex:
-        productType === "edgeband" ? matchedItemIndex : undefined,
-    });
-  }
-
-  // Edgeband matched indexes must point at material lines.
-  for (const item of items) {
-    if (
-      item.productType === "edgeband" &&
-      item.matchedItemIndex !== undefined &&
-      item.matchedItemIndex !== null
-    ) {
-      const target = items[item.matchedItemIndex];
-      if (!target || target.productType !== "material") return null;
-    }
-  }
-
-  return items;
 }
 
 export async function GET() {
@@ -110,9 +42,9 @@ export async function POST(request: Request) {
   const notes = String(payload.notes ?? "").trim();
   const priority = payload.priority;
 
-  let items = parseItems(payload.items);
+  let items = parseRequestItems(payload.items);
   if (!items && isProductType(payload.productType)) {
-    items = parseItems([
+    items = parseRequestItems([
       {
         productType: payload.productType,
         productName: payload.productName ?? payload.materialName,

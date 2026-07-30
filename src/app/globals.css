@@ -1127,8 +1127,45 @@ textarea {
 .date-locks {
   margin-top: 0.75rem;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.55rem;
+}
+
+.request-edit-bar {
+  margin-top: 0.75rem;
+}
+
+.edit-request-form {
+  margin-top: 0.85rem;
+  padding: 1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(10, 84, 112, 0.18);
+  background: rgba(10, 84, 112, 0.04);
+}
+
+.edit-request-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin-bottom: 0.9rem;
+}
+
+.edit-request-heading h4 {
+  margin: 0;
+  font-family: var(--font-display);
+}
+
+.edit-request-heading p {
+  margin: 0.25rem 0 0;
+  color: var(--ink-muted);
+  font-size: 0.88rem;
+}
+
+.edit-request-actions {
+  margin-top: 0.9rem;
+  display: grid;
+  gap: 0.45rem;
 }
 
 .order-context {

@@ -297,6 +297,65 @@ export function updateRequest(
   const now = new Date().toISOString();
   let items = current.items;
 
+  if (input.items) {
+    const previousById = new Map(current.items.map((item) => [item.id, item]));
+    items = input.items.map((item) => {
+      const existing =
+        item.id && previousById.has(item.id)
+          ? previousById.get(item.id)
+          : undefined;
+      return {
+        id: existing?.id ?? crypto.randomUUID(),
+        productType: item.productType,
+        productName: item.productName.trim(),
+        quantity: item.quantity,
+        unit: unitForProductType(item.productType),
+        core:
+          item.productType === "material"
+            ? (item.core ?? "").trim() || null
+            : null,
+        color:
+          item.productType === "material"
+            ? (item.color ?? "").trim() || null
+            : null,
+        matchToSheet:
+          item.productType === "edgeband"
+            ? (item.matchToSheet ?? "").trim() || null
+            : null,
+        matchedItemId: null,
+        // Keep existing manager reply when the same line item id is reused.
+        managerResponse: existing?.managerResponse ?? null,
+      };
+    });
+
+    input.items.forEach((item, itemIndex) => {
+      if (item.productType !== "edgeband") return;
+      const matchedIndex = item.matchedItemIndex;
+      if (
+        matchedIndex === undefined ||
+        matchedIndex === null ||
+        !Number.isInteger(matchedIndex) ||
+        matchedIndex < 0 ||
+        matchedIndex >= items.length
+      ) {
+        return;
+      }
+      const target = items[matchedIndex];
+      if (target.productType !== "material") return;
+      items[itemIndex] = {
+        ...items[itemIndex],
+        matchedItemId: target.id,
+        matchToSheet:
+          items[itemIndex].matchToSheet ||
+          `${target.productName}${
+            target.core || target.color
+              ? ` (${[target.core, target.color].filter(Boolean).join(" · ")})`
+              : ""
+          }`,
+      };
+    });
+  }
+
   if (input.itemReply) {
     const itemIndex = items.findIndex(
       (item) => item.id === input.itemReply!.itemId,
@@ -321,9 +380,14 @@ export function updateRequest(
   }
 
   // Lock request-level respondedAt the first time every product is answered.
+  // If items were edited and a previously complete reply set is broken, clear it.
   let respondedAt = current.respondedAt;
-  if (!respondedAt && allItemsResponded(items)) {
-    respondedAt = now;
+  if (allItemsResponded(items)) {
+    if (!respondedAt) {
+      respondedAt = now;
+    }
+  } else {
+    respondedAt = null;
   }
 
   const updated: MaterialRequest = {
@@ -331,9 +395,22 @@ export function updateRequest(
     createdAt: current.createdAt,
     respondedAt,
     items,
+    customer:
+      input.customer !== undefined ? input.customer.trim() : current.customer,
+    poNumber:
+      input.poNumber !== undefined ? input.poNumber.trim() : current.poNumber,
+    department:
+      input.department !== undefined
+        ? input.department.trim()
+        : current.department,
+    requesterName:
+      input.requesterName !== undefined
+        ? input.requesterName.trim()
+        : current.requesterName,
     status: input.status ?? current.status,
     priority: input.priority ?? current.priority,
     notes: input.notes !== undefined ? input.notes.trim() : current.notes,
+    // Always refresh edit timestamp when anything changes.
     updatedAt: now,
   };
 

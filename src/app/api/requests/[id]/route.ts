@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { isValidManagerPassword } from "@/lib/managerAuth";
+import { parseRequestItems } from "@/lib/parseItems";
 import { updateRequest } from "@/lib/store";
 import {
   PRIORITIES,
@@ -33,6 +34,44 @@ export async function PATCH(request: Request, context: RouteContext) {
   const input: UpdateMaterialRequestInput = {};
   const managerPassword = payload.managerPassword;
 
+  if (payload.customer !== undefined) {
+    const customer = String(payload.customer).trim();
+    if (!customer) {
+      return NextResponse.json({ error: "customer cannot be empty" }, { status: 400 });
+    }
+    input.customer = customer;
+  }
+
+  if (payload.poNumber !== undefined || payload.po !== undefined) {
+    const poNumber = String(payload.poNumber ?? payload.po ?? "").trim();
+    if (!poNumber) {
+      return NextResponse.json({ error: "poNumber cannot be empty" }, { status: 400 });
+    }
+    input.poNumber = poNumber;
+  }
+
+  if (payload.department !== undefined) {
+    const department = String(payload.department).trim();
+    if (!department) {
+      return NextResponse.json(
+        { error: "department cannot be empty" },
+        { status: 400 },
+      );
+    }
+    input.department = department;
+  }
+
+  if (payload.requesterName !== undefined) {
+    const requesterName = String(payload.requesterName).trim();
+    if (!requesterName) {
+      return NextResponse.json(
+        { error: "requesterName cannot be empty" },
+        { status: 400 },
+      );
+    }
+    input.requesterName = requesterName;
+  }
+
   if (payload.status !== undefined) {
     if (
       typeof payload.status !== "string" ||
@@ -57,6 +96,20 @@ export async function PATCH(request: Request, context: RouteContext) {
     input.notes = String(payload.notes);
   }
 
+  if (payload.items !== undefined) {
+    const items = parseRequestItems(payload.items);
+    if (!items) {
+      return NextResponse.json(
+        {
+          error:
+            "Invalid items. Material needs core + color. Edgeband needs matchToSheet.",
+        },
+        { status: 400 },
+      );
+    }
+    input.items = items;
+  }
+
   const itemId = String(payload.itemId ?? "").trim();
   const managerResponseRaw = payload.managerResponse;
   const isManagerAction =
@@ -66,7 +119,10 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   if (isManagerAction && !isValidManagerPassword(managerPassword)) {
     return NextResponse.json(
-      { error: "Manager password required. Only managers can reply or update status." },
+      {
+        error:
+          "Manager password required. Only managers can reply or update status.",
+      },
       { status: 401 },
     );
   }
@@ -123,9 +179,14 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   if (
+    input.customer === undefined &&
+    input.poNumber === undefined &&
+    input.department === undefined &&
+    input.requesterName === undefined &&
     input.status === undefined &&
     input.priority === undefined &&
     input.notes === undefined &&
+    input.items === undefined &&
     input.itemReply === undefined
   ) {
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });

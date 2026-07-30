@@ -2,6 +2,10 @@
 
 import { useMemo, useState, type FormEvent } from "react";
 import {
+  EditRequestForm,
+  type EditRequestPayload,
+} from "@/components/EditRequestForm";
+import {
   ManagerReplyForm,
   ManagerResponseSummary,
   type ManagerReplyPayload,
@@ -52,6 +56,7 @@ type RequestBoardProps = {
     managerPassword: string,
   ) => Promise<void>;
   onManagerReply: (id: string, payload: ManagerReplyPayload) => Promise<void>;
+  onEditRequest: (id: string, payload: EditRequestPayload) => Promise<void>;
   onCreateClick?: () => void;
 };
 
@@ -61,6 +66,7 @@ export function RequestBoard({
   highlightId,
   onStatusChange,
   onManagerReply,
+  onEditRequest,
   onCreateClick,
 }: RequestBoardProps) {
   const [filter, setFilter] = useState<BoardFilter>("awaiting");
@@ -68,6 +74,7 @@ export function RequestBoard({
   const [expandedReplies, setExpandedReplies] = useState<Record<string, boolean>>(
     {},
   );
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [managerPassword, setManagerPassword] = useState("");
   const [passwordDraft, setPasswordDraft] = useState("");
   const [managerUnlocked, setManagerUnlocked] = useState(false);
@@ -354,6 +361,10 @@ export function RequestBoard({
                       <strong>{formatTime(request.createdAt)}</strong>
                     </div>
                     <div className="date-lock">
+                      <span>Last edited</span>
+                      <strong>{formatTime(request.updatedAt)}</strong>
+                    </div>
+                    <div className="date-lock">
                       <span>Responded</span>
                       <strong>
                         {request.respondedAt
@@ -362,6 +373,29 @@ export function RequestBoard({
                       </strong>
                     </div>
                   </div>
+
+                  <div className="request-edit-bar">
+                    {editingId === request.id ? null : (
+                      <button
+                        type="button"
+                        className="ghost-btn"
+                        onClick={() => setEditingId(request.id)}
+                      >
+                        Edit request
+                      </button>
+                    )}
+                  </div>
+
+                  {editingId === request.id ? (
+                    <EditRequestForm
+                      request={request}
+                      onCancel={() => setEditingId(null)}
+                      onSave={async (id, payload) => {
+                        await onEditRequest(id, payload);
+                        setEditingId(null);
+                      }}
+                    />
+                  ) : null}
 
                   <ul className="line-items">
                     {request.items.map((item) => {

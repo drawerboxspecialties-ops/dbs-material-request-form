@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { EditRequestPayload } from "@/components/EditRequestForm";
 import type { ManagerReplyPayload } from "@/components/ManagerReplyForm";
 import { RequestBoard } from "@/components/RequestBoard";
 import { RequestForm } from "@/components/RequestForm";
@@ -19,7 +20,9 @@ function upsertRequest(
 ): MaterialRequest[] {
   const without = requests.filter((item) => item.id !== request.id);
   return [request, ...without].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    (a, b) =>
+      new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime() ||
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
 }
 
@@ -136,6 +139,25 @@ export function LiveApp() {
     [],
   );
 
+  const handleEditRequest = useCallback(
+    async (id: string, payload: EditRequestPayload) => {
+      const response = await fetch(`/api/requests/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        throw new Error(data.error ?? "Failed to save request edits");
+      }
+
+      setFlashRequestId(id);
+      setToast("Request updated · last edited time refreshed");
+    },
+    [],
+  );
+
   return (
     <div className="app-shell">
       <div className="ambient ambient-a" aria-hidden />
@@ -230,6 +252,7 @@ export function LiveApp() {
               highlightId={flashRequestId}
               onStatusChange={handleStatusChange}
               onManagerReply={handleManagerReply}
+              onEditRequest={handleEditRequest}
               onCreateClick={() => setView("request")}
             />
           </div>

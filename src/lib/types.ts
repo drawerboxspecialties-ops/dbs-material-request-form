@@ -91,6 +91,7 @@ export type MaterialRequest = {
 };
 
 export type CreateRequestItemInput = {
+  id?: string;
   productType: ProductType;
   productName: string;
   quantity: number;
@@ -112,9 +113,14 @@ export type CreateMaterialRequestInput = {
 };
 
 export type UpdateMaterialRequestInput = {
+  customer?: string;
+  poNumber?: string;
+  department?: string;
+  requesterName?: string;
   status?: RequestStatus;
   priority?: Priority;
   notes?: string;
+  items?: CreateRequestItemInput[];
   itemReply?: {
     itemId: string;
     managerResponse: {
