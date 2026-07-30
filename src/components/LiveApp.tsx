@@ -12,8 +12,6 @@ import {
   type StoreEvent,
 } from "@/lib/types";
 
-type AppView = "request" | "board";
-
 function upsertRequest(
   requests: MaterialRequest[],
   request: MaterialRequest,
@@ -30,7 +28,6 @@ export function LiveApp() {
   const [requests, setRequests] = useState<MaterialRequest[]>([]);
   const [connected, setConnected] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [view, setView] = useState<AppView>("request");
   const [toast, setToast] = useState<string | null>(null);
   const [flashRequestId, setFlashRequestId] = useState<string | null>(null);
 
@@ -160,9 +157,6 @@ export function LiveApp() {
 
   return (
     <div className="app-shell">
-      <div className="ambient ambient-a" aria-hidden />
-      <div className="ambient ambient-b" aria-hidden />
-
       <header className="topbar">
         <div className="brand-block">
           <div className="brand-mark" aria-hidden>
@@ -196,64 +190,35 @@ export function LiveApp() {
         </div>
       </header>
 
-      <nav className="view-switch" aria-label="App views">
-        <button
-          type="button"
-          className={view === "request" ? "active" : ""}
-          onClick={() => setView("request")}
-        >
-          <span className="view-title">New request</span>
-          <span className="view-copy">Customer, PO, products</span>
-        </button>
-        <button
-          type="button"
-          className={view === "board" ? "active" : ""}
-          onClick={() => setView("board")}
-        >
-          <span className="view-title">Live board</span>
-          <span className="view-copy">Track & reply</span>
-        </button>
-      </nav>
-
-      <p className="page-lede">
-        {view === "request"
-          ? "Mix Material, Hardware, and Edgeband in one request. Material needs core/color; Edgeband must match a sheet."
-          : "Search by customer or PO. Managers unlock to reply with availability, lead time, price, and vendor."}
-      </p>
-
       {loadError ? <p className="banner error">{loadError}</p> : null}
       {toast ? <div className="toast" role="status">{toast}</div> : null}
 
-      <main className="view-stage">
-        {view === "request" ? (
-          <section className="panel panel-focus enter">
-            <div className="panel-heading">
-              <div>
-                <h2>Create request</h2>
-                <p>Multiple product types in one submit.</p>
-              </div>
+      <main className="workspace">
+        <section className="panel panel-compose">
+          <div className="panel-heading">
+            <div>
+              <h2>New request</h2>
+              <p>Customer, PO, and products in one submit.</p>
             </div>
-            <RequestForm
-              onCreated={(requestId) => {
-                setFlashRequestId(requestId);
-                setToast("Request submitted");
-                setView("board");
-              }}
-            />
-          </section>
-        ) : (
-          <div className="enter">
-            <RequestBoard
-              requests={requests}
-              connected={connected}
-              highlightId={flashRequestId}
-              onStatusChange={handleStatusChange}
-              onManagerReply={handleManagerReply}
-              onEditRequest={handleEditRequest}
-              onCreateClick={() => setView("request")}
-            />
           </div>
-        )}
+          <RequestForm
+            onCreated={(requestId) => {
+              setFlashRequestId(requestId);
+              setToast("Request submitted");
+            }}
+          />
+        </section>
+
+        <section className="panel-board">
+          <RequestBoard
+            requests={requests}
+            connected={connected}
+            highlightId={flashRequestId}
+            onStatusChange={handleStatusChange}
+            onManagerReply={handleManagerReply}
+            onEditRequest={handleEditRequest}
+          />
+        </section>
       </main>
     </div>
   );

@@ -52,7 +52,6 @@ type RequestBoardProps = {
   ) => Promise<void>;
   onManagerReply: (id: string, payload: ManagerReplyPayload) => Promise<void>;
   onEditRequest: (id: string, payload: EditRequestPayload) => Promise<void>;
-  onCreateClick?: () => void;
 };
 
 export function RequestBoard({
@@ -62,7 +61,6 @@ export function RequestBoard({
   onStatusChange,
   onManagerReply,
   onEditRequest,
-  onCreateClick,
 }: RequestBoardProps) {
   const [filter, setFilter] = useState<BoardFilter>("awaiting");
   const [query, setQuery] = useState("");
@@ -184,11 +182,6 @@ export function RequestBoard({
             <span className="live-dot" aria-hidden />
             {connected ? "Live" : "Reconnecting…"}
           </div>
-          {onCreateClick ? (
-            <button type="button" className="ghost-btn" onClick={onCreateClick}>
-              New request
-            </button>
-          ) : null}
         </div>
       </div>
 
@@ -274,11 +267,6 @@ export function RequestBoard({
               ? "Create the first material request and it will appear here live."
               : "Try another filter or clear your search."}
           </p>
-          {requests.length === 0 && onCreateClick ? (
-            <button type="button" className="submit-btn" onClick={onCreateClick}>
-              Create request
-            </button>
-          ) : null}
         </div>
       ) : (
         <ul className="request-list">

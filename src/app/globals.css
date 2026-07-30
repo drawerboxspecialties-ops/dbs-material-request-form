@@ -70,7 +70,7 @@ textarea {
 
 .app-shell {
   position: relative;
-  width: min(1080px, calc(100% - 1.25rem));
+  width: min(1280px, calc(100% - 1.25rem));
   margin: 0 auto;
   padding: 0.85rem 0 2rem;
   z-index: 1;
@@ -262,6 +262,24 @@ textarea {
 }
 
 .view-stage {
+  min-height: 18rem;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: start;
+}
+
+.panel-compose {
+  position: sticky;
+  top: 0.65rem;
+  max-height: calc(100vh - 1.3rem);
+  overflow: auto;
+}
+
+.panel-board .board {
   min-height: 18rem;
 }
 
@@ -1215,6 +1233,15 @@ textarea {
 }
 
 @media (max-width: 900px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .panel-compose {
+    position: static;
+    max-height: none;
+  }
+
   .topbar,
   .board-header,
   .request-row {
