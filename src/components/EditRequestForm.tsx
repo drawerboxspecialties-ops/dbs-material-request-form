@@ -26,6 +26,8 @@ type DraftItem = {
   color: string;
   matchToSheet: string;
   matchedDraftKey: string;
+  matchInRequest: boolean;
+  thickness: string;
 };
 
 function draftFromRequest(request: MaterialRequest): DraftItem[] {
@@ -39,6 +41,10 @@ function draftFromRequest(request: MaterialRequest): DraftItem[] {
     color: item.color ?? "",
     matchToSheet: item.matchToSheet ?? "",
     matchedDraftKey: item.matchedItemId ?? "",
+    matchInRequest:
+      item.productType === "edgeband" &&
+      Boolean(item.matchedItemId || item.matchToSheet),
+    thickness: item.thickness ?? "",
   }));
 }
 
@@ -52,6 +58,8 @@ function newDraftItem(productType: ProductType = "material"): DraftItem {
     color: "",
     matchToSheet: "",
     matchedDraftKey: "",
+    matchInRequest: productType === "edgeband",
+    thickness: "",
   };
 }
 
@@ -69,6 +77,7 @@ export type EditRequestPayload = {
     core?: string;
     color?: string;
     matchToSheet?: string;
+    thickness?: string;
     matchedItemIndex?: number | null;
   }>;
 };
@@ -151,6 +160,7 @@ export function EditRequestForm({
         return {
           ...item,
           matchedDraftKey,
+          matchInRequest: true,
           matchToSheet: describeSheetMatch({
             id: target.key,
             productType: "material",
@@ -161,6 +171,7 @@ export function EditRequestForm({
             color: target.color || null,
             matchToSheet: null,
             matchedItemId: null,
+            thickness: null,
             managerResponse: null,
           }),
         };
@@ -175,36 +186,60 @@ export function EditRequestForm({
 
     try {
       for (const item of items) {
-        if (!item.productName.trim() || Number(item.quantity) <= 0) {
-          throw new Error("Each product needs a name and a positive quantity");
+        if (Number(item.quantity) <= 0) {
+          throw new Error("Each product needs a positive quantity");
         }
         if (
           item.productType === "material" &&
-          (!item.core.trim() || !item.color.trim())
+          (!item.productName.trim() || !item.core.trim() || !item.color.trim())
         ) {
-          throw new Error("Material lines need core and color");
+          throw new Error("Material lines need name, core, and color");
         }
-        if (item.productType === "edgeband" && !item.matchToSheet.trim()) {
-          throw new Error("Edgeband lines must be matched to a sheet");
+        if (item.productType === "hardware" && !item.productName.trim()) {
+          throw new Error("Hardware lines need a product name");
+        }
+        if (item.productType === "edgeband") {
+          if (!item.thickness.trim()) {
+            throw new Error("Edgeband lines need thickness");
+          }
+          if (item.matchInRequest) {
+            if (!item.matchedDraftKey || !item.matchToSheet.trim()) {
+              throw new Error("Choose a sheet in this request to match");
+            }
+          } else if (!item.productName.trim()) {
+            throw new Error("Edgeband lines need a product name");
+          }
         }
       }
 
       const payloadItems = items.map((item) => {
         const matchedItemIndex =
-          item.productType === "edgeband" && item.matchedDraftKey
+          item.productType === "edgeband" &&
+          item.matchInRequest &&
+          item.matchedDraftKey
             ? items.findIndex((entry) => entry.key === item.matchedDraftKey)
             : null;
+
+        const productName =
+          item.productType === "edgeband" && item.matchInRequest
+            ? item.productName.trim() ||
+              `Edgeband for ${item.matchToSheet.trim()}`
+            : item.productName.trim();
 
         return {
           id: item.id,
           productType: item.productType,
-          productName: item.productName.trim(),
+          productName,
           quantity: Number(item.quantity),
           core: item.productType === "material" ? item.core.trim() : undefined,
           color: item.productType === "material" ? item.color.trim() : undefined,
           matchToSheet:
-            item.productType === "edgeband"
+            item.productType === "edgeband" && item.matchInRequest
               ? item.matchToSheet.trim()
+              : undefined,
+          thickness:
+            item.productType === "edgeband"
+              ? item.thickness.trim()
               : undefined,
           matchedItemIndex:
             matchedItemIndex !== null && matchedItemIndex >= 0
@@ -333,26 +368,50 @@ export function EditRequestForm({
                         color: "",
                         matchToSheet: "",
                         matchedDraftKey: "",
+                        matchInRequest: type === "edgeband",
+                        thickness: "",
+                        productName: "",
                       })
                     }
                   >
-                    <strong>{PRODUCT_TYPE_LABELS[type]}</strong>
-                    <em>{PRODUCT_UNITS[type]}</em>
+                    {PRODUCT_TYPE_LABELS[type]}
                   </button>
                 ))}
               </div>
 
-              <label className="field">
-                <span>Product name</span>
-                <input
-                  required
-                  value={item.productName}
-                  onChange={(e) =>
-                    updateItem(item.key, { productName: e.target.value })
-                  }
-                  placeholder={PRODUCT_PLACEHOLDERS[item.productType]}
-                />
-              </label>
+              {item.productType === "edgeband" ? (
+                <label className="check-field">
+                  <input
+                    type="checkbox"
+                    checked={item.matchInRequest}
+                    onChange={(e) =>
+                      updateItem(item.key, {
+                        matchInRequest: e.target.checked,
+                        matchedDraftKey: "",
+                        matchToSheet: "",
+                        productName: e.target.checked ? "" : item.productName,
+                      })
+                    }
+                  />
+                  <span>Match to sheet in this request</span>
+                </label>
+              ) : null}
+
+              {item.productType !== "edgeband" || !item.matchInRequest ? (
+                <label className="field">
+                  <span>Product name</span>
+                  <input
+                    required={
+                      item.productType !== "edgeband" || !item.matchInRequest
+                    }
+                    value={item.productName}
+                    onChange={(e) =>
+                      updateItem(item.key, { productName: e.target.value })
+                    }
+                    placeholder={PRODUCT_PLACEHOLDERS[item.productType]}
+                  />
+                </label>
+              ) : null}
 
               {item.productType === "material" ? (
                 <div className="draft-item-qty">
@@ -379,41 +438,41 @@ export function EditRequestForm({
                 </div>
               ) : null}
 
+              {item.productType === "edgeband" && item.matchInRequest ? (
+                <label className="field">
+                  <span>Sheet in this request</span>
+                  <select
+                    required
+                    value={item.matchedDraftKey}
+                    onChange={(e) =>
+                      applySheetMatch(item.key, e.target.value)
+                    }
+                  >
+                    <option value="">Select a material line…</option>
+                    {materialOptions.map(
+                      ({ item: material, index: materialIndex }) => (
+                        <option key={material.key} value={material.key}>
+                          Item {materialIndex + 1}:{" "}
+                          {material.productName || "Untitled sheet"}
+                        </option>
+                      ),
+                    )}
+                  </select>
+                </label>
+              ) : null}
+
               {item.productType === "edgeband" ? (
-                <div className="edgeband-match">
-                  <label className="field">
-                    <span>Match to sheet in this request</span>
-                    <select
-                      value={item.matchedDraftKey}
-                      onChange={(e) =>
-                        applySheetMatch(item.key, e.target.value)
-                      }
-                    >
-                      <option value="">Describe sheet manually…</option>
-                      {materialOptions.map(
-                        ({ item: material, index: materialIndex }) => (
-                          <option key={material.key} value={material.key}>
-                            Item {materialIndex + 1}:{" "}
-                            {material.productName || "Untitled sheet"}
-                          </option>
-                        ),
-                      )}
-                    </select>
-                  </label>
-                  <label className="field">
-                    <span>Sheet to match</span>
-                    <input
-                      required
-                      value={item.matchToSheet}
-                      onChange={(e) =>
-                        updateItem(item.key, {
-                          matchedDraftKey: "",
-                          matchToSheet: e.target.value,
-                        })
-                      }
-                    />
-                  </label>
-                </div>
+                <label className="field">
+                  <span>Thickness needed</span>
+                  <input
+                    required
+                    value={item.thickness}
+                    onChange={(e) =>
+                      updateItem(item.key, { thickness: e.target.value })
+                    }
+                    placeholder="e.g. 1mm, 2mm, 22mm"
+                  />
+                </label>
               ) : null}
 
               <div className="draft-item-qty">
@@ -453,7 +512,6 @@ export function EditRequestForm({
               }
             >
               + {PRODUCT_TYPE_LABELS[type]}
-              <em>{PRODUCT_UNITS[type]}</em>
             </button>
           ))}
         </div>

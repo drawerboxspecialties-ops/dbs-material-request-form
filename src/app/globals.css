@@ -735,6 +735,23 @@ textarea {
   margin-top: 0.4rem;
 }
 
+.check-field {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.45rem;
+  font-size: 0.82rem;
+  font-weight: 650;
+  color: var(--brand-deep);
+  cursor: pointer;
+}
+
+.check-field input {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--brand);
+}
+
 .multi-type-callout {
   display: none;
 }

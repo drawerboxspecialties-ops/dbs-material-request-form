@@ -58,10 +58,12 @@ export type RequestItem = {
   core: string | null;
   /** Required for material sheets. */
   color: string | null;
-  /** Required for edgeband — which sheet this edgeband must match. */
+  /** Optional for edgeband — which sheet this edgeband must match. */
   matchToSheet: string | null;
   /** Optional link to a material line item in the same request. */
   matchedItemId: string | null;
+  /** Required for edgeband — thickness needed. */
+  thickness: string | null;
   managerResponse: ManagerResponse | null;
 };
 
@@ -94,6 +96,7 @@ export type CreateRequestItemInput = {
   core?: string;
   color?: string;
   matchToSheet?: string;
+  thickness?: string;
   /** Index of a material item in the same create payload to match against. */
   matchedItemIndex?: number | null;
 };
@@ -167,4 +170,14 @@ export function formatMaterialSpec(item: Pick<RequestItem, "core" | "color">) {
 export function describeSheetMatch(item: RequestItem) {
   const spec = formatMaterialSpec(item);
   return spec ? `${item.productName} (${spec})` : item.productName;
+}
+
+export function formatEdgebandSpec(
+  item: Pick<RequestItem, "thickness" | "matchToSheet">,
+) {
+  const parts = [
+    item.thickness ? `${item.thickness} thick` : null,
+    item.matchToSheet ? `Match: ${item.matchToSheet}` : null,
+  ].filter(Boolean);
+  return parts.length > 0 ? parts.join(" · ") : null;
 }

@@ -14,6 +14,7 @@ import {
   AVAILABILITY_LABELS,
   PRODUCT_TYPE_LABELS,
   allItemsResponded,
+  formatEdgebandSpec,
   formatMaterialSpec,
   repliedItemCount,
   type MaterialRequest,
@@ -483,9 +484,10 @@ export function RequestBoard({
                             Core / Color: {formatMaterialSpec(item)}
                           </p>
                         ) : null}
-                        {item.productType === "edgeband" && item.matchToSheet ? (
+                        {item.productType === "edgeband" &&
+                        formatEdgebandSpec(item) ? (
                           <p className="line-item-spec">
-                            Match to sheet: {item.matchToSheet}
+                            {formatEdgebandSpec(item)}
                           </p>
                         ) : null}
                       </div>

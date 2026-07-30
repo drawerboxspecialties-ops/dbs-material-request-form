@@ -16,6 +16,7 @@ export function parseRequestItems(raw: unknown): CreateRequestItemInput[] | null
     const core = String(value.core ?? "").trim();
     const color = String(value.color ?? "").trim();
     const matchToSheet = String(value.matchToSheet ?? "").trim();
+    const thickness = String(value.thickness ?? "").trim();
     const id = String(value.id ?? "").trim() || undefined;
     const matchedItemIndexRaw = value.matchedItemIndex;
     const matchedItemIndex =
@@ -23,16 +24,23 @@ export function parseRequestItems(raw: unknown): CreateRequestItemInput[] | null
         ? null
         : Number(matchedItemIndexRaw);
 
-    if (!isProductType(productType) || !productName) return null;
+    if (!isProductType(productType)) return null;
     if (!Number.isFinite(quantity) || quantity <= 0) return null;
     if (productType === "hardware" && !Number.isInteger(quantity)) return null;
 
-    if (productType === "material" && (!core || !color)) {
+    if (productType === "material" && (!core || !color || !productName)) {
       return null;
     }
 
-    if (productType === "edgeband" && !matchToSheet) {
+    if (productType === "hardware" && !productName) {
       return null;
+    }
+
+    if (productType === "edgeband") {
+      if (!thickness) return null;
+      const matchingSheet =
+        matchedItemIndex !== null || Boolean(matchToSheet);
+      if (!matchingSheet && !productName) return null;
     }
 
     if (
@@ -48,11 +56,13 @@ export function parseRequestItems(raw: unknown): CreateRequestItemInput[] | null
     items.push({
       id,
       productType,
-      productName,
+      productName:
+        productType === "edgeband" && !productName ? "Edgeband" : productName,
       quantity,
       core: productType === "material" ? core : undefined,
       color: productType === "material" ? color : undefined,
-      matchToSheet: productType === "edgeband" ? matchToSheet : undefined,
+      matchToSheet: productType === "edgeband" ? matchToSheet || undefined : undefined,
+      thickness: productType === "edgeband" ? thickness : undefined,
       matchedItemIndex:
         productType === "edgeband" ? matchedItemIndex : undefined,
     });

@@ -5,6 +5,7 @@ import {
   AVAILABILITIES,
   AVAILABILITY_LABELS,
   PRODUCT_TYPE_LABELS,
+  formatEdgebandSpec,
   type Availability,
   type ManagerResponse,
   type MaterialRequest,
@@ -99,8 +100,8 @@ export function ManagerReplyForm({
           {item.productType === "material" && (item.core || item.color)
             ? ` · Core ${item.core ?? "—"} · Color ${item.color ?? "—"}`
             : ""}
-          {item.productType === "edgeband" && item.matchToSheet
-            ? ` · Match sheet: ${item.matchToSheet}`
+          {item.productType === "edgeband" && formatEdgebandSpec(item)
+            ? ` · ${formatEdgebandSpec(item)}`
             : ""}
         </p>
         <div className="date-locks compact">

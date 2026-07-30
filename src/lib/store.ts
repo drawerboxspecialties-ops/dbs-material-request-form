@@ -110,6 +110,7 @@ function normalizeItem(raw: Record<string, unknown>): RequestItem | null {
   const color = String(raw.color ?? "").trim() || null;
   const matchToSheet = String(raw.matchToSheet ?? "").trim() || null;
   const matchedItemId = String(raw.matchedItemId ?? "").trim() || null;
+  const thickness = String(raw.thickness ?? "").trim() || null;
 
   return {
     id: String(raw.id ?? crypto.randomUUID()),
@@ -121,6 +122,7 @@ function normalizeItem(raw: Record<string, unknown>): RequestItem | null {
     color: productType === "material" ? color : null,
     matchToSheet: productType === "edgeband" ? matchToSheet : null,
     matchedItemId: productType === "edgeband" ? matchedItemId : null,
+    thickness: productType === "edgeband" ? thickness : null,
     managerResponse: normalizeManagerResponse(raw.managerResponse),
   };
 }
@@ -329,6 +331,10 @@ export async function createRequest(
           ? (item.matchToSheet ?? "").trim() || null
           : null,
       matchedItemId: null,
+      thickness:
+        item.productType === "edgeband"
+          ? (item.thickness ?? "").trim() || null
+          : null,
       managerResponse: null,
     }));
 
@@ -420,6 +426,10 @@ export async function updateRequest(
               ? (item.matchToSheet ?? "").trim() || null
               : null,
           matchedItemId: null,
+          thickness:
+            item.productType === "edgeband"
+              ? (item.thickness ?? "").trim() || null
+              : null,
           managerResponse: existing?.managerResponse ?? null,
         };
       });
