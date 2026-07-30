@@ -24,28 +24,6 @@ function upsertRequest(
   );
 }
 
-function mergeRequestLists(
-  current: MaterialRequest[],
-  incoming: MaterialRequest[],
-): MaterialRequest[] {
-  const map = new Map<string, MaterialRequest>();
-  for (const request of [...current, ...incoming]) {
-    const previous = map.get(request.id);
-    if (
-      !previous ||
-      new Date(request.updatedAt).getTime() >=
-        new Date(previous.updatedAt).getTime()
-    ) {
-      map.set(request.id, request);
-    }
-  }
-  return [...map.values()].sort(
-    (a, b) =>
-      new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime() ||
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-  );
-}
-
 export function LiveApp() {
   const [requests, setRequests] = useState<MaterialRequest[]>([]);
   const [connected, setConnected] = useState(false);
@@ -73,13 +51,14 @@ export function LiveApp() {
         try {
           const event = JSON.parse(message.data) as StoreEvent;
           if (event.type === "snapshot") {
-            // Merge instead of replace so a cold serverless instance
-            // cannot wipe a request the browser just created.
-            setRequests((current) =>
-              mergeRequestLists(current, event.requests),
-            );
+            // Shared Blob storage is authoritative — replace so deletes stick.
+            setRequests(event.requests);
           } else if (event.type === "created" || event.type === "updated") {
             setRequests((current) => upsertRequest(current, event.request));
+          } else if (event.type === "deleted") {
+            setRequests((current) =>
+              current.filter((item) => item.id !== event.id),
+            );
           }
         } catch {
           setLoadError("Received an invalid live update");
@@ -112,7 +91,7 @@ export function LiveApp() {
         if (!response.ok) return;
         const data = (await response.json()) as { requests?: MaterialRequest[] };
         if (cancelled || !Array.isArray(data.requests)) return;
-        setRequests((current) => mergeRequestLists(current, data.requests!));
+        setRequests(data.requests);
       } catch {
         // Keep SSE as primary; polling is a backup only.
       }
@@ -207,6 +186,25 @@ export function LiveApp() {
     [],
   );
 
+  const handleDeleteRequest = useCallback(
+    async (id: string, managerPassword: string) => {
+      const response = await fetch(`/api/requests/${id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ managerPassword }),
+      });
+
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        throw new Error(data.error ?? "Failed to delete request");
+      }
+
+      setRequests((current) => current.filter((item) => item.id !== id));
+      setToast("Request deleted");
+    },
+    [],
+  );
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -269,6 +267,7 @@ export function LiveApp() {
           onStatusChange={handleStatusChange}
           onManagerReply={handleManagerReply}
           onEditRequest={handleEditRequest}
+          onDeleteRequest={handleDeleteRequest}
         />
       </main>
     </div>

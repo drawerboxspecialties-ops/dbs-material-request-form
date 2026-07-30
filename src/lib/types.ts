@@ -130,7 +130,8 @@ export type UpdateMaterialRequestInput = {
 export type StoreEvent =
   | { type: "snapshot"; requests: MaterialRequest[] }
   | { type: "created"; request: MaterialRequest }
-  | { type: "updated"; request: MaterialRequest };
+  | { type: "updated"; request: MaterialRequest }
+  | { type: "deleted"; id: string };
 
 export function unitForProductType(productType: ProductType): ProductUnit {
   return PRODUCT_UNITS[productType];

@@ -289,6 +289,13 @@ async function persist(requests: MaterialRequest[]) {
   await saveToBlob(merged);
 }
 
+async function persistExact(requests: MaterialRequest[]) {
+  const store = ensureStore();
+  store.requests = requests;
+  persistDisk(requests);
+  await saveToBlob(requests);
+}
+
 export async function listRequests(): Promise<MaterialRequest[]> {
   return withStoreLock(async () => {
     await hydrateFromShared();
@@ -502,6 +509,21 @@ export async function updateRequest(
     await persist(store.requests);
     store.emitter.emit("change", { type: "updated", request: updated });
     return updated;
+  });
+}
+
+export async function deleteRequest(id: string): Promise<boolean> {
+  return withStoreLock(async () => {
+    await hydrateFromShared();
+    const store = ensureStore();
+    if (!store.requests.some((item) => item.id === id)) {
+      return false;
+    }
+
+    const next = store.requests.filter((item) => item.id !== id);
+    await persistExact(next);
+    store.emitter.emit("change", { type: "deleted", id });
+    return true;
   });
 }
 

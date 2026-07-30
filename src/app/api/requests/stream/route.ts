@@ -40,7 +40,7 @@ export async function GET() {
 
       cleanup = subscribe((event) => {
         try {
-          if (event.type === "created" || event.type === "updated") {
+          if (event.type === "created" || event.type === "updated" || event.type === "deleted") {
             lastFingerprint = "";
           }
           send(event);

@@ -52,6 +52,7 @@ type RequestBoardProps = {
   ) => Promise<void>;
   onManagerReply: (id: string, payload: ManagerReplyPayload) => Promise<void>;
   onEditRequest: (id: string, payload: EditRequestPayload) => Promise<void>;
+  onDeleteRequest: (id: string, managerPassword: string) => Promise<void>;
 };
 
 export function RequestBoard({
@@ -61,6 +62,7 @@ export function RequestBoard({
   onStatusChange,
   onManagerReply,
   onEditRequest,
+  onDeleteRequest,
 }: RequestBoardProps) {
   const [filter, setFilter] = useState<BoardFilter>("awaiting");
   const [query, setQuery] = useState("");
@@ -74,6 +76,8 @@ export function RequestBoard({
   const [managerUnlocked, setManagerUnlocked] = useState(false);
   const [unlockError, setUnlockError] = useState<string | null>(null);
   const [unlocking, setUnlocking] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const openCount = requests.filter(
     (item) => item.status !== "fulfilled" && item.status !== "rejected",
@@ -182,7 +186,31 @@ export function RequestBoard({
     setManagerPassword("");
     setPasswordDraft("");
     setUnlockError(null);
+    setDeleteError(null);
     setExpandedReplies({});
+  }
+
+  async function handleDelete() {
+    if (!selected || !managerUnlocked) return;
+    const label = `${selected.customer || "Untitled"} / PO ${selected.poNumber || "—"}`;
+    const confirmed = window.confirm(
+      `Delete this request?\n\n${label}\n\nThis cannot be undone.`,
+    );
+    if (!confirmed) return;
+
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await onDeleteRequest(selected.id, managerPassword);
+      setEditingId(null);
+      setSelectedId(null);
+    } catch (err) {
+      setDeleteError(
+        err instanceof Error ? err.message : "Could not delete request",
+      );
+    } finally {
+      setDeleting(false);
+    }
   }
 
   return (
@@ -266,6 +294,7 @@ export function RequestBoard({
                     onClick={() => {
                       setSelectedId(request.id);
                       setEditingId(null);
+                      setDeleteError(null);
                     }}
                   >
                     <div className="queue-card-top">
@@ -327,7 +356,7 @@ export function RequestBoard({
             <div className="manager-gate-row">
               <p>
                 <strong>Manager mode on</strong>
-                <span>You can reply and update status.</span>
+                <span>You can reply, update status, and delete.</span>
               </p>
               <button type="button" className="ghost-btn" onClick={lockManager}>
                 Lock
@@ -451,7 +480,22 @@ export function RequestBoard({
                   ))}
                 </select>
               </label>
+              {managerUnlocked ? (
+                <button
+                  type="button"
+                  className="danger-btn"
+                  disabled={deleting}
+                  onClick={() => {
+                    void handleDelete();
+                  }}
+                >
+                  {deleting ? "Deleting…" : "Delete request"}
+                </button>
+              ) : null}
             </div>
+            {deleteError ? (
+              <p className="form-message error">{deleteError}</p>
+            ) : null}
 
             {editingId === selected.id ? (
               <EditRequestForm

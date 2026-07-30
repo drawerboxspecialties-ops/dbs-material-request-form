@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { isValidManagerPassword } from "@/lib/managerAuth";
 import { parseRequestItems } from "@/lib/parseItems";
-import { updateRequest } from "@/lib/store";
+import { deleteRequest, updateRequest } from "@/lib/store";
 import {
   STATUSES,
   isAvailability,
@@ -14,6 +14,39 @@ export const dynamic = "force-dynamic";
 type RouteContext = {
   params: Promise<{ id: string }>;
 };
+
+export async function DELETE(request: Request, context: RouteContext) {
+  const { id } = await context.params;
+
+  let body: unknown = {};
+  try {
+    const text = await request.text();
+    if (text.trim()) {
+      body = JSON.parse(text) as unknown;
+    }
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  const managerPassword =
+    body && typeof body === "object"
+      ? (body as Record<string, unknown>).managerPassword
+      : undefined;
+
+  if (!isValidManagerPassword(managerPassword)) {
+    return NextResponse.json(
+      { error: "Manager password required to delete a request." },
+      { status: 401 },
+    );
+  }
+
+  const deleted = await deleteRequest(id);
+  if (!deleted) {
+    return NextResponse.json({ error: "Request not found" }, { status: 404 });
+  }
+
+  return NextResponse.json({ ok: true, id });
+}
 
 export async function PATCH(request: Request, context: RouteContext) {
   const { id } = await context.params;
