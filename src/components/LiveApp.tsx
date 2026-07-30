@@ -169,7 +169,7 @@ export function LiveApp() {
             DBS
           </div>
           <div>
-            <p className="brand-kicker">Operations</p>
+            <p className="brand-kicker">Ops</p>
             <h1>Material Requests</h1>
           </div>
         </div>
@@ -177,7 +177,7 @@ export function LiveApp() {
         <div className="topbar-meta">
           <div className={`live-pill${connected ? " on" : ""}`}>
             <span className="live-dot" aria-hidden />
-            {connected ? "Live sync on" : "Reconnecting…"}
+            {connected ? "Live" : "Reconnecting…"}
           </div>
           <div className="stat-cluster" aria-label="Request summary">
             <div className="stat-chip">
@@ -203,7 +203,7 @@ export function LiveApp() {
           onClick={() => setView("request")}
         >
           <span className="view-title">New request</span>
-          <span className="view-copy">Raise Material, Hardware, or Edgeband</span>
+          <span className="view-copy">Customer, PO, products</span>
         </button>
         <button
           type="button"
@@ -211,14 +211,14 @@ export function LiveApp() {
           onClick={() => setView("board")}
         >
           <span className="view-title">Live board</span>
-          <span className="view-copy">Track replies, prices, and status</span>
+          <span className="view-copy">Track & reply</span>
         </button>
       </nav>
 
       <p className="page-lede">
         {view === "request"
-          ? "Start with customer and PO, then mix Material, Hardware, and Edgeband in one request. Material needs core and color. Edgeband must match a sheet."
-          : "Everyone sees updates instantly. Filter by customer or PO, then managers reply per product with availability, lead time, price, and vendor."}
+          ? "Mix Material, Hardware, and Edgeband in one request. Material needs core/color; Edgeband must match a sheet."
+          : "Search by customer or PO. Managers unlock to reply with availability, lead time, price, and vendor."}
       </p>
 
       {loadError ? <p className="banner error">{loadError}</p> : null}
@@ -230,10 +230,7 @@ export function LiveApp() {
             <div className="panel-heading">
               <div>
                 <h2>Create request</h2>
-                <p>
-                  One submission can include Material, Hardware, and Edgeband
-                  together.
-                </p>
+                <p>Multiple product types in one submit.</p>
               </div>
             </div>
             <RequestForm

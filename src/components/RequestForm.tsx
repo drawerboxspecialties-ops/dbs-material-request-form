@@ -214,7 +214,7 @@ export function RequestForm({ onCreated }: RequestFormProps) {
           <span>1</span>
           <div>
             <h3>Customer &amp; PO</h3>
-            <p>Link this request to the job before adding products.</p>
+            <p>Job this request is for.</p>
           </div>
         </div>
 
@@ -245,8 +245,8 @@ export function RequestForm({ onCreated }: RequestFormProps) {
         <div className="section-label">
           <span>2</span>
           <div>
-            <h3>Who is requesting</h3>
-            <p>Department, your name, and how urgent this is.</p>
+            <h3>Requester</h3>
+            <p>Who is asking and how urgent.</p>
           </div>
         </div>
 
@@ -295,10 +295,10 @@ export function RequestForm({ onCreated }: RequestFormProps) {
         <div className="section-label">
           <span>3</span>
           <div>
-            <h3>Products needed</h3>
+            <h3>Products</h3>
             <p>
-              Mix Material, Hardware, and Edgeband in this same request ·{" "}
-              {items.length} line{items.length === 1 ? "" : "s"}
+              Mix types in one request · {items.length} line
+              {items.length === 1 ? "" : "s"}
               {typeSummary ? ` · ${typeSummary}` : ""}
             </p>
           </div>
@@ -499,13 +499,13 @@ export function RequestForm({ onCreated }: RequestFormProps) {
           <span>4</span>
           <div>
             <h3>Notes</h3>
-            <p>Optional job details for warehouse or purchasing.</p>
+            <p>Optional.</p>
           </div>
         </div>
         <label className="field">
-          <span>Extra details</span>
+          <span>Details</span>
           <textarea
-            rows={3}
+            rows={2}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Location, job number, or special instructions"

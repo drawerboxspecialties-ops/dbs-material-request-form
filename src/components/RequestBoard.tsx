@@ -181,8 +181,7 @@ export function RequestBoard({
         <div>
           <h2>Live board</h2>
           <p>
-            {openCount} open · {awaitingReply} awaiting reply · {requests.length}{" "}
-            total
+            {openCount} open · {awaitingReply} awaiting · {requests.length} total
           </p>
         </div>
         <div className="board-actions">
@@ -399,8 +398,7 @@ export function RequestBoard({
 
                   <ul className="line-items">
                     {request.items.map((item) => {
-                      const replyOpen =
-                        expandedReplies[item.id] ?? !item.managerResponse;
+                      const replyOpen = expandedReplies[item.id] ?? false;
 
                       return (
                         <li key={item.id} className="line-item">
