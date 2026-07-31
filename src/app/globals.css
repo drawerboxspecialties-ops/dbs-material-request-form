@@ -715,9 +715,6 @@ textarea {
 }
 
 .draft-item-qty {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.45rem;
   margin-top: 0.4rem;
 }
 

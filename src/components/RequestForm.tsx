@@ -572,25 +572,19 @@ export function RequestForm({
                   </label>
                 ) : null}
 
-                <div className="draft-item-qty">
-                  <label className="field">
-                    <span>Quantity ({unit})</span>
-                    <input
-                      required
-                      type="number"
-                      min={quantityMin}
-                      step={quantityStep}
-                      value={item.quantity}
-                      onChange={(e) =>
-                        updateItem(item.key, { quantity: e.target.value })
-                      }
-                    />
-                  </label>
-                  <label className="field">
-                    <span>Unit</span>
-                    <input value={unit} readOnly className="readonly-input" />
-                  </label>
-                </div>
+                <label className="field draft-item-qty">
+                  <span>Quantity ({unit})</span>
+                  <input
+                    required
+                    type="number"
+                    min={quantityMin}
+                    step={quantityStep}
+                    value={item.quantity}
+                    onChange={(e) =>
+                      updateItem(item.key, { quantity: e.target.value })
+                    }
+                  />
+                </label>
               </div>
             );
           })}
