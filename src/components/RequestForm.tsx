@@ -174,6 +174,19 @@ export function RequestForm({
     onSeedApplied?.();
   }, [seed, onSeedApplied]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const fromQuoteCustomer = params.get("customer")?.trim() ?? "";
+    const fromQuotePo = (params.get("po") ?? params.get("poNumber"))?.trim() ?? "";
+    const fromQuoteRequester = (params.get("requester") ?? params.get("requesterName"))?.trim() ?? "";
+    if (!fromQuoteCustomer && !fromQuotePo && !fromQuoteRequester) return;
+
+    setCustomer((current) => current || fromQuoteCustomer);
+    setPoNumber((current) => current || fromQuotePo);
+    setRequesterName((current) => current || fromQuoteRequester);
+  }, []);
+
   const materialOptions = useMemo(
     () =>
       items
