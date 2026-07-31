@@ -66,7 +66,6 @@ function newDraftItem(productType: ProductType = "material"): DraftItem {
 export type EditRequestPayload = {
   customer: string;
   poNumber: string;
-  department: string;
   requesterName: string;
   notes: string;
   items: Array<{
@@ -96,7 +95,6 @@ export function EditRequestForm({
   const [items, setItems] = useState<DraftItem[]>(() => draftFromRequest(request));
   const [customer, setCustomer] = useState(request.customer);
   const [poNumber, setPoNumber] = useState(request.poNumber);
-  const [department, setDepartment] = useState(request.department);
   const [requesterName, setRequesterName] = useState(request.requesterName);
   const [notes, setNotes] = useState(request.notes);
   const [submitting, setSubmitting] = useState(false);
@@ -106,7 +104,6 @@ export function EditRequestForm({
     setItems(draftFromRequest(request));
     setCustomer(request.customer);
     setPoNumber(request.poNumber);
-    setDepartment(request.department);
     setRequesterName(request.requesterName);
     setNotes(request.notes);
   }, [request]);
@@ -251,7 +248,6 @@ export function EditRequestForm({
       await onSave(request.id, {
         customer: customer.trim(),
         poNumber: poNumber.trim(),
-        department: department.trim(),
         requesterName: requesterName.trim(),
         notes: notes.trim(),
         items: payloadItems,
@@ -293,14 +289,6 @@ export function EditRequestForm({
             required
             value={poNumber}
             onChange={(e) => setPoNumber(e.target.value)}
-          />
-        </label>
-        <label className="field">
-          <span>Department</span>
-          <input
-            required
-            value={department}
-            onChange={(e) => setDepartment(e.target.value)}
           />
         </label>
         <label className="field">

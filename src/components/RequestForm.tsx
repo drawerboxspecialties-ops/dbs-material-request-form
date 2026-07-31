@@ -32,7 +32,6 @@ type DraftItem = {
 export type RequestFormDraft = {
   customer: string;
   poNumber: string;
-  department: string;
   requesterName: string;
   notes: string;
   items: DraftItem[];
@@ -63,7 +62,6 @@ export function emptyRequestFormDraft(): RequestFormDraft {
   return {
     customer: "",
     poNumber: "",
-    department: "",
     requesterName: "",
     notes: "",
     items: [newDraftItem()],
@@ -108,7 +106,6 @@ export function buildFormDraftFromRequest(
   return {
     customer: request.customer,
     poNumber: request.poNumber,
-    department: request.department,
     requesterName: request.requesterName,
     notes: request.notes,
     items: items.length > 0 ? items : [newDraftItem()],
@@ -129,7 +126,6 @@ export function RequestForm({
   const [items, setItems] = useState<DraftItem[]>([newDraftItem()]);
   const [customer, setCustomer] = useState("");
   const [poNumber, setPoNumber] = useState("");
-  const [department, setDepartment] = useState("");
   const [requesterName, setRequesterName] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -143,7 +139,6 @@ export function RequestForm({
   ) {
     setCustomer(draft.customer);
     setPoNumber(draft.poNumber);
-    setDepartment(draft.department);
     setRequesterName(draft.requesterName);
     setNotes(draft.notes);
     setItems(
@@ -306,7 +301,6 @@ export function RequestForm({
           customer,
           poNumber,
           items: payloadItems,
-          department,
           requesterName,
           notes,
         }),
@@ -381,16 +375,6 @@ export function RequestForm({
         </div>
 
         <div className="form-grid">
-          <label className="field">
-            <span>Department</span>
-            <input
-              required
-              value={department}
-              onChange={(e) => setDepartment(e.target.value)}
-              placeholder="e.g. Production"
-            />
-          </label>
-
           <label className="field">
             <span>Requester</span>
             <input

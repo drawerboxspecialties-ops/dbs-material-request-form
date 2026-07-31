@@ -371,7 +371,7 @@ export async function createRequest(
       customer: input.customer.trim(),
       poNumber: input.poNumber.trim(),
       items,
-      department: input.department.trim(),
+      department: (input.department ?? "").trim(),
       requesterName: input.requesterName.trim(),
       status: "pending",
       notes: (input.notes ?? "").trim(),

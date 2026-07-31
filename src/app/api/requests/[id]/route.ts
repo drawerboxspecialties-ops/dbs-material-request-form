@@ -59,14 +59,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   if (payload.department !== undefined) {
-    const department = String(payload.department).trim();
-    if (!department) {
-      return NextResponse.json(
-        { error: "department cannot be empty" },
-        { status: 400 },
-      );
-    }
-    input.department = department;
+    input.department = String(payload.department).trim();
   }
 
   if (payload.requesterName !== undefined) {

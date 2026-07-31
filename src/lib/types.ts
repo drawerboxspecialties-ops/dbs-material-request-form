@@ -107,7 +107,7 @@ export type CreateMaterialRequestInput = {
   customer: string;
   poNumber: string;
   items: CreateRequestItemInput[];
-  department: string;
+  department?: string;
   requesterName: string;
   notes?: string;
 };

@@ -61,9 +61,9 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!department || !requesterName) {
+  if (!requesterName) {
     return NextResponse.json(
-      { error: "department and requesterName are required" },
+      { error: "requesterName is required" },
       { status: 400 },
     );
   }

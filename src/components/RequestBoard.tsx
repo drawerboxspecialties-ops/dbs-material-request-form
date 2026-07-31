@@ -367,8 +367,6 @@ export function RequestBoard({
                 <p className="request-meta">
                   <span>PO {selected.poNumber || "—"}</span>
                   <span>·</span>
-                  <span>{selected.department}</span>
-                  <span>·</span>
                   <span>{selected.requesterName}</span>
                 </p>
               </div>
