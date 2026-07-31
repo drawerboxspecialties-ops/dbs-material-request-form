@@ -4,6 +4,7 @@ import path from "node:path";
 import { get, put } from "@vercel/blob";
 import {
   allItemsResponded,
+  describeSheetMatch,
   isAvailability,
   isProductType,
   unitForProductType,
@@ -357,12 +358,7 @@ export async function createRequest(
         ...items[index],
         matchedItemId: target.id,
         matchToSheet:
-          items[index].matchToSheet ||
-          `${target.productName}${
-            target.core || target.color
-              ? ` (${[target.core, target.color].filter(Boolean).join(" · ")})`
-              : ""
-          }`,
+          items[index].matchToSheet || describeSheetMatch(target),
       };
     });
 
@@ -454,11 +450,7 @@ export async function updateRequest(
           matchedItemId: target.id,
           matchToSheet:
             items[itemIndex].matchToSheet ||
-            `${target.productName}${
-              target.core || target.color
-                ? ` (${[target.core, target.color].filter(Boolean).join(" · ")})`
-                : ""
-            }`,
+            describeSheetMatch(target),
         };
       });
     }

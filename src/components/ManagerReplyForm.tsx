@@ -6,6 +6,7 @@ import {
   AVAILABILITY_LABELS,
   PRODUCT_TYPE_LABELS,
   formatEdgebandSpec,
+  materialDescription,
   type Availability,
   type ManagerResponse,
   type MaterialRequest,
@@ -105,10 +106,10 @@ export function ManagerReplyForm({
           {PRODUCT_TYPE_LABELS[item.productType]}
         </h4>
         <p>
-          {item.productName} · {item.quantity} {item.unit}
-          {item.productType === "material" && (item.core || item.color)
-            ? ` · Core ${item.core ?? "—"} · Color ${item.color ?? "—"}`
-            : ""}
+          {item.productType === "material"
+            ? materialDescription(item)
+            : item.productName}{" "}
+          · {item.quantity} {item.unit}
           {item.productType === "edgeband" && formatEdgebandSpec(item)
             ? ` · ${formatEdgebandSpec(item)}`
             : ""}

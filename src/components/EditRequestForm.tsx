@@ -6,14 +6,21 @@ import {
   PRODUCT_TYPE_LABELS,
   PRODUCT_UNITS,
   describeSheetMatch,
+  materialDescription,
   type MaterialRequest,
   type ProductType,
 } from "@/lib/types";
 
 const PRODUCT_PLACEHOLDERS: Record<ProductType, string> = {
-  material: "e.g. White melamine 18mm",
+  material: "e.g. White melamine 18mm · MDF · White",
   hardware: "e.g. Soft-close hinges",
   edgeband: "e.g. PVC edgeband 22mm",
+};
+
+const PRODUCT_FIELD_LABELS: Record<ProductType, string> = {
+  material: "Material",
+  hardware: "Product name",
+  edgeband: "Product name",
 };
 
 type DraftItem = {
@@ -35,10 +42,13 @@ function draftFromRequest(request: MaterialRequest): DraftItem[] {
     key: item.id,
     id: item.id,
     productType: item.productType,
-    productName: item.productName,
+    productName:
+      item.productType === "material"
+        ? materialDescription(item)
+        : item.productName,
     quantity: String(item.quantity),
-    core: item.core ?? "",
-    color: item.color ?? "",
+    core: "",
+    color: "",
     matchToSheet: item.matchToSheet ?? "",
     matchedDraftKey: item.matchedItemId ?? "",
     matchInRequest:
@@ -186,11 +196,8 @@ export function EditRequestForm({
         if (Number(item.quantity) <= 0) {
           throw new Error("Each product needs a positive quantity");
         }
-        if (
-          item.productType === "material" &&
-          (!item.productName.trim() || !item.core.trim() || !item.color.trim())
-        ) {
-          throw new Error("Material lines need name, core, and color");
+        if (item.productType === "material" && !item.productName.trim()) {
+          throw new Error("Material lines need a description");
         }
         if (item.productType === "hardware" && !item.productName.trim()) {
           throw new Error("Hardware lines need a product name");
@@ -228,8 +235,6 @@ export function EditRequestForm({
           productType: item.productType,
           productName,
           quantity: Number(item.quantity),
-          core: item.productType === "material" ? item.core.trim() : undefined,
-          color: item.productType === "material" ? item.color.trim() : undefined,
           matchToSheet:
             item.productType === "edgeband" && item.matchInRequest
               ? item.matchToSheet.trim()
@@ -387,43 +392,22 @@ export function EditRequestForm({
 
               {item.productType !== "edgeband" || !item.matchInRequest ? (
                 <label className="field">
-                  <span>Product name</span>
+                  <span>{PRODUCT_FIELD_LABELS[item.productType]}</span>
                   <input
                     required={
                       item.productType !== "edgeband" || !item.matchInRequest
                     }
                     value={item.productName}
                     onChange={(e) =>
-                      updateItem(item.key, { productName: e.target.value })
+                      updateItem(item.key, {
+                        productName: e.target.value,
+                        core: "",
+                        color: "",
+                      })
                     }
                     placeholder={PRODUCT_PLACEHOLDERS[item.productType]}
                   />
                 </label>
-              ) : null}
-
-              {item.productType === "material" ? (
-                <div className="draft-item-qty">
-                  <label className="field">
-                    <span>Core</span>
-                    <input
-                      required
-                      value={item.core}
-                      onChange={(e) =>
-                        updateItem(item.key, { core: e.target.value })
-                      }
-                    />
-                  </label>
-                  <label className="field">
-                    <span>Color</span>
-                    <input
-                      required
-                      value={item.color}
-                      onChange={(e) =>
-                        updateItem(item.key, { color: e.target.value })
-                      }
-                    />
-                  </label>
-                </div>
               ) : null}
 
               {item.productType === "edgeband" && item.matchInRequest ? (

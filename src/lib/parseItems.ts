@@ -28,7 +28,7 @@ export function parseRequestItems(raw: unknown): CreateRequestItemInput[] | null
     if (!Number.isFinite(quantity) || quantity <= 0) return null;
     if (productType === "hardware" && !Number.isInteger(quantity)) return null;
 
-    if (productType === "material" && (!core || !color || !productName)) {
+    if (productType === "material" && !productName) {
       return null;
     }
 
@@ -59,8 +59,8 @@ export function parseRequestItems(raw: unknown): CreateRequestItemInput[] | null
       productName:
         productType === "edgeband" && !productName ? "Edgeband" : productName,
       quantity,
-      core: productType === "material" ? core : undefined,
-      color: productType === "material" ? color : undefined,
+      core: productType === "material" ? core || undefined : undefined,
+      color: productType === "material" ? color || undefined : undefined,
       matchToSheet: productType === "edgeband" ? matchToSheet || undefined : undefined,
       thickness: productType === "edgeband" ? thickness : undefined,
       matchedItemIndex:

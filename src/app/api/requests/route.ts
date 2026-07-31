@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "Invalid items. Material needs core + color. Edgeband needs thickness (and a name or sheet match).",
+          "Invalid items. Material needs a description. Edgeband needs thickness (and a name or sheet match).",
       },
       { status: 400 },
     );

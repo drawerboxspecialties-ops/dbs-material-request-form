@@ -56,9 +56,9 @@ export type RequestItem = {
   productName: string;
   quantity: number;
   unit: ProductUnit;
-  /** Required for material sheets. */
+  /** Legacy — older requests stored core separately; new ones use productName only. */
   core: string | null;
-  /** Required for material sheets. */
+  /** Legacy — older requests stored color separately; new ones use productName only. */
   color: string | null;
   /** Optional for edgeband — which sheet this edgeband must match. */
   matchToSheet: string | null;
@@ -170,9 +170,18 @@ export function formatMaterialSpec(item: Pick<RequestItem, "core" | "color">) {
   return parts.length > 0 ? parts.join(" · ") : null;
 }
 
-export function describeSheetMatch(item: RequestItem) {
+/** Single display/edit string for material (merges legacy core/color when present). */
+export function materialDescription(
+  item: Pick<RequestItem, "productName" | "core" | "color">,
+) {
   const spec = formatMaterialSpec(item);
-  return spec ? `${item.productName} (${spec})` : item.productName;
+  if (!spec) return item.productName;
+  if (!item.productName.trim()) return spec;
+  return `${item.productName} · ${spec}`;
+}
+
+export function describeSheetMatch(item: RequestItem) {
+  return materialDescription(item);
 }
 
 export function formatEdgebandSpec(

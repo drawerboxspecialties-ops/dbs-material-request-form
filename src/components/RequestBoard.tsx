@@ -16,7 +16,7 @@ import {
   PRODUCT_TYPE_LABELS,
   allItemsResponded,
   formatEdgebandSpec,
-  formatMaterialSpec,
+  materialDescription,
   repliedItemCount,
   type MaterialRequest,
   type RequestStatus,
@@ -474,17 +474,15 @@ export function RequestBoard({
                   <li key={item.id} className="line-item">
                     <div className="line-item-header">
                       <div>
-                        <strong>{item.productName}</strong>
+                        <strong>
+                          {item.productType === "material"
+                            ? materialDescription(item)
+                            : item.productName}
+                        </strong>
                         <p>
                           {PRODUCT_TYPE_LABELS[item.productType]} ·{" "}
                           {item.quantity} {item.unit}
                         </p>
-                        {item.productType === "material" &&
-                        formatMaterialSpec(item) ? (
-                          <p className="line-item-spec">
-                            Core / Color: {formatMaterialSpec(item)}
-                          </p>
-                        ) : null}
                         {item.productType === "edgeband" &&
                         formatEdgebandSpec(item) ? (
                           <p className="line-item-spec">

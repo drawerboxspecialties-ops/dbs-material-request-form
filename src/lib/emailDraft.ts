@@ -1,7 +1,7 @@
 import {
   PRODUCT_TYPE_LABELS,
   formatEdgebandSpec,
-  formatMaterialSpec,
+  materialDescription,
   type MaterialRequest,
   type RequestItem,
 } from "@/lib/types";
@@ -15,14 +15,16 @@ export type EmailDraft = {
 };
 
 function describeItem(item: RequestItem, index: number) {
+  const name =
+    item.productType === "material"
+      ? materialDescription(item)
+      : item.productName;
   const lines = [
-    `${index + 1}. ${PRODUCT_TYPE_LABELS[item.productType]} — ${item.productName}`,
+    `${index + 1}. ${PRODUCT_TYPE_LABELS[item.productType]} — ${name}`,
     `   Qty: ${item.quantity} ${item.unit}`,
   ];
 
   if (item.productType === "material") {
-    const spec = formatMaterialSpec(item);
-    if (spec) lines.push(`   Core / Color: ${spec}`);
     if (item.managerResponse?.sheetSize) {
       lines.push(`   Sheet size: ${item.managerResponse.sheetSize}`);
     }

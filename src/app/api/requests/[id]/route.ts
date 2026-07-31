@@ -93,7 +93,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       return NextResponse.json(
         {
           error:
-            "Invalid items. Material needs core + color. Edgeband needs thickness (and a name or sheet match).",
+            "Invalid items. Material needs a description. Edgeband needs thickness (and a name or sheet match).",
         },
         { status: 400 },
       );
