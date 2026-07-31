@@ -44,35 +44,25 @@ export function buildVendorEmailDraft(
     ? `Hi ${vendor.contactName},`
     : "Hello,";
 
-  const subject = `Material Request — ${request.customer || "Customer"} / PO ${request.poNumber || "—"}`;
+  const subject = "Material Request";
 
   const itemBlock =
     request.items.length > 0
       ? request.items.map((item, index) => describeItem(item, index)).join("\n")
       : "(No line items)";
 
-  const body = [
+  const bodyParts = [
     greeting,
     "",
-    "Please quote / confirm availability for the following request from Drawer Box Specialties:",
-    "",
-    `Customer: ${request.customer || "—"}`,
-    `PO: ${request.poNumber || "—"}`,
-    `Requester: ${request.requesterName || "—"} (${request.department || "—"})`,
+    "Please quote / confirm availability for the following:",
     "",
     "Items:",
     itemBlock,
-    "",
-    request.notes?.trim()
-      ? `Notes: ${request.notes.trim()}`
-      : "Notes: (none)",
-    "",
-    "Please reply with availability, lead time, pricing, and vendor confirmation.",
-    "",
-    "Thank you,",
-    request.requesterName?.trim() || "Drawer Box Specialties",
-    "Drawer Box Specialties",
-  ].join("\n");
+  ];
 
-  return { to, subject, body };
+  if (request.notes?.trim()) {
+    bodyParts.push("", `Notes: ${request.notes.trim()}`);
+  }
+
+  return { to, subject, body: bodyParts.join("\n") };
 }
