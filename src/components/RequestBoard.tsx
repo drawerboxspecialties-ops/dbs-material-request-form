@@ -30,7 +30,7 @@ const STATUS_OPTIONS: { value: RequestStatus; label: string }[] = [
   { value: "rejected", label: "Rejected" },
 ];
 
-type BoardFilter = "all" | "awaiting" | "open" | "done";
+type BoardFilter = "all" | "open" | "done";
 
 function formatTime(value: string) {
   return new Intl.DateTimeFormat(undefined, {
@@ -60,7 +60,7 @@ export function RequestBoard({
   onDeleteRequest,
   onCopyRequest,
 }: RequestBoardProps) {
-  const [filter, setFilter] = useState<BoardFilter>("awaiting");
+  const [filter, setFilter] = useState<BoardFilter>("open");
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [expandedReplies, setExpandedReplies] = useState<Record<string, boolean>>(
@@ -73,9 +73,6 @@ export function RequestBoard({
   const openCount = requests.filter(
     (item) => item.status !== "fulfilled" && item.status !== "rejected",
   ).length;
-  const awaitingReply = requests.filter(
-    (item) => !allItemsResponded(item.items),
-  ).length;
   const doneCount = requests.filter(
     (item) => item.status === "fulfilled" || item.status === "rejected",
   ).length;
@@ -83,12 +80,10 @@ export function RequestBoard({
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return requests.filter((request) => {
-      const complete = allItemsResponded(request.items);
       const isDone =
         request.status === "fulfilled" || request.status === "rejected";
       const isOpen = !isDone;
 
-      if (filter === "awaiting" && complete) return false;
       if (filter === "open" && !isOpen) return false;
       if (filter === "done" && !isDone) return false;
 
@@ -185,8 +180,7 @@ export function RequestBoard({
           <div>
             <h2>Queue</h2>
             <p>
-              {awaitingReply} awaiting · {openCount} open · {requests.length}{" "}
-              total
+              {openCount} open · {requests.length} total
             </p>
           </div>
           <div className={`live-pill${connected ? " on" : ""}`}>
@@ -199,7 +193,6 @@ export function RequestBoard({
           <div className="filter-row" role="tablist" aria-label="Filter requests">
             {(
               [
-                ["awaiting", `Awaiting (${awaitingReply})`],
                 ["open", `Open (${openCount})`],
                 ["done", `Done (${doneCount})`],
                 ["all", `All (${requests.length})`],
