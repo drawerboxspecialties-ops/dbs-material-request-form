@@ -9,6 +9,7 @@ import { vendorEmailTo, type Vendor } from "@/lib/vendors";
 
 export type EmailDraft = {
   to: string;
+  bcc: string;
   subject: string;
   body: string;
 };
@@ -35,14 +36,41 @@ function describeItem(item: RequestItem, index: number) {
   return lines.join("\n");
 }
 
+function uniqueEmails(vendors: Vendor[]) {
+  const seen = new Set<string>();
+  const emails: string[] = [];
+  for (const vendor of vendors) {
+    for (const email of vendor.emails) {
+      const key = email.trim().toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      emails.push(email.trim());
+    }
+  }
+  return emails;
+}
+
 export function buildVendorEmailDraft(
   request: MaterialRequest,
-  vendor: Vendor | null,
+  options: {
+    toVendor?: Vendor | null;
+    bccVendors?: Vendor[];
+  } = {},
 ): EmailDraft {
-  const to = vendor ? vendorEmailTo(vendor) : "";
-  const greeting = vendor?.contactName
-    ? `Hi ${vendor.contactName},`
-    : "Hello,";
+  const toVendor = options.toVendor ?? null;
+  const bccVendors = options.bccVendors ?? [];
+  const to = toVendor ? vendorEmailTo(toVendor) : "";
+  const bcc = uniqueEmails(bccVendors).join("; ");
+
+  // Keep greeting generic when BCCing multiple vendors so no one is named.
+  const greeting =
+    bccVendors.length > 1
+      ? "Hello,"
+      : toVendor?.contactName
+        ? `Hi ${toVendor.contactName},`
+        : bccVendors[0]?.contactName
+          ? `Hi ${bccVendors[0].contactName},`
+          : "Hello,";
 
   const subject = "Material Request";
 
@@ -64,5 +92,5 @@ export function buildVendorEmailDraft(
     bodyParts.push("", `Notes: ${request.notes.trim()}`);
   }
 
-  return { to, subject, body: bodyParts.join("\n") };
+  return { to, bcc, subject, body: bodyParts.join("\n") };
 }

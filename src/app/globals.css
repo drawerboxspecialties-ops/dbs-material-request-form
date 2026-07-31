@@ -1443,6 +1443,72 @@ textarea {
   gap: 0.45rem;
 }
 
+.bcc-picker {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.bcc-picker-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.bcc-picker-heading strong {
+  font-size: 0.82rem;
+  color: var(--brand-deep);
+}
+
+.bcc-picker-actions {
+  display: flex;
+  gap: 0.55rem;
+}
+
+.bcc-vendor-list {
+  display: grid;
+  gap: 0.2rem;
+  max-height: 11rem;
+  overflow: auto;
+  padding: 0.35rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.bcc-vendor-row {
+  margin: 0;
+  padding: 0.28rem 0.3rem;
+  border-radius: 6px;
+  align-items: flex-start;
+}
+
+.bcc-vendor-row:hover {
+  background: rgba(10, 84, 112, 0.05);
+}
+
+.bcc-vendor-row span {
+  display: grid;
+  gap: 0.05rem;
+}
+
+.bcc-vendor-row strong {
+  font-size: 0.8rem;
+}
+
+.bcc-vendor-row em {
+  font-style: normal;
+  font-size: 0.7rem;
+  color: var(--ink-muted);
+  font-weight: 500;
+}
+
+.bcc-count {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--ink-muted);
+}
+
 .vendor-email-heading h3 {
   margin: 0;
   font-family: var(--font-display);

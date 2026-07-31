@@ -17,15 +17,47 @@ async function copyText(value: string) {
 }
 
 export function VendorEmailPanel({ request }: VendorEmailPanelProps) {
-  const [vendorId, setVendorId] = useState(VENDORS[0]?.id ?? "");
+  const [toVendorId, setToVendorId] = useState("");
+  const [bccVendorIds, setBccVendorIds] = useState<string[]>([]);
   const [copied, setCopied] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const vendor = useMemo(() => findVendorById(vendorId), [vendorId]);
-  const draft = useMemo(
-    () => buildVendorEmailDraft(request, vendor),
-    [request, vendor],
+  const toVendor = useMemo(
+    () => (toVendorId ? findVendorById(toVendorId) : null),
+    [toVendorId],
   );
+  const bccVendors = useMemo(
+    () =>
+      bccVendorIds
+        .map((id) => findVendorById(id))
+        .filter((vendor): vendor is NonNullable<typeof vendor> => Boolean(vendor)),
+    [bccVendorIds],
+  );
+
+  const draft = useMemo(
+    () =>
+      buildVendorEmailDraft(request, {
+        toVendor,
+        bccVendors,
+      }),
+    [request, toVendor, bccVendors],
+  );
+
+  function toggleBcc(vendorId: string) {
+    setBccVendorIds((current) =>
+      current.includes(vendorId)
+        ? current.filter((id) => id !== vendorId)
+        : [...current, vendorId],
+    );
+  }
+
+  function selectAllBcc() {
+    setBccVendorIds(VENDORS.map((vendor) => vendor.id));
+  }
+
+  function clearBcc() {
+    setBccVendorIds([]);
+  }
 
   async function handleCopy(label: string, value: string) {
     setError(null);
@@ -40,21 +72,36 @@ export function VendorEmailPanel({ request }: VendorEmailPanelProps) {
     }
   }
 
+  const mailtoHref = useMemo(() => {
+    const params = new URLSearchParams();
+    params.set("subject", draft.subject);
+    params.set("body", draft.body);
+    if (draft.bcc) {
+      params.set("bcc", draft.bcc.replace(/;\s*/g, ","));
+    }
+    const to = draft.to.replace(/;\s*/g, ",");
+    return `mailto:${to}?${params.toString()}`;
+  }, [draft]);
+
   return (
     <section className="vendor-email-panel">
       <div className="vendor-email-heading">
         <div>
           <h3>Vendor email</h3>
-          <p>Pick a vendor, then copy subject/body into your email.</p>
+          <p>
+            Select one or more vendors for BCC, then copy subject/body into your
+            email.
+          </p>
         </div>
       </div>
 
       <label className="field">
-        <span>Vendor</span>
+        <span>To (optional)</span>
         <select
-          value={vendorId}
-          onChange={(e) => setVendorId(e.target.value)}
+          value={toVendorId}
+          onChange={(e) => setToVendorId(e.target.value)}
         >
+          <option value="">None — use BCC only</option>
           {VENDORS.map((entry) => (
             <option key={entry.id} value={entry.id}>
               {entry.companyName} — {entry.contactName}
@@ -63,34 +110,83 @@ export function VendorEmailPanel({ request }: VendorEmailPanelProps) {
         </select>
       </label>
 
-      {vendor ? (
-        <div className="vendor-card" aria-label="Selected vendor">
-          <div>
-            <strong>{vendor.companyName}</strong>
-            <p>
-              {vendor.contactName} · ID {vendor.customerId}
-            </p>
-          </div>
-          <div className="vendor-card-meta">
-            <span>Phone {vendor.phone || "—"}</span>
-            {vendor.fax ? <span>Fax {vendor.fax}</span> : null}
-            <span>{vendorEmailTo(vendor)}</span>
+      <div className="bcc-picker">
+        <div className="bcc-picker-heading">
+          <strong>BCC vendors</strong>
+          <div className="bcc-picker-actions">
+            <button type="button" className="link-btn" onClick={selectAllBcc}>
+              Select all
+            </button>
+            <button type="button" className="link-btn" onClick={clearBcc}>
+              Clear
+            </button>
           </div>
         </div>
-      ) : null}
+        <div className="bcc-vendor-list" role="group" aria-label="BCC vendors">
+          {VENDORS.map((entry) => {
+            const checked = bccVendorIds.includes(entry.id);
+            return (
+              <label key={entry.id} className="check-field bcc-vendor-row">
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => toggleBcc(entry.id)}
+                />
+                <span>
+                  <strong>{entry.companyName}</strong>
+                  <em>
+                    {entry.contactName} · {vendorEmailTo(entry)}
+                  </em>
+                </span>
+              </label>
+            );
+          })}
+        </div>
+        <p className="bcc-count">
+          {bccVendors.length} vendor{bccVendors.length === 1 ? "" : "s"} selected
+          for BCC
+        </p>
+      </div>
 
       <label className="field">
         <span>To</span>
         <div className="copy-row">
-          <input readOnly value={draft.to} className="readonly-input" />
+          <input
+            readOnly
+            value={draft.to || "(empty — BCC only)"}
+            className="readonly-input"
+          />
           <button
             type="button"
             className="ghost-btn"
+            disabled={!draft.to}
             onClick={() => {
               void handleCopy("to", draft.to);
             }}
           >
             {copied === "to" ? "Copied" : "Copy"}
+          </button>
+        </div>
+      </label>
+
+      <label className="field">
+        <span>BCC</span>
+        <div className="copy-row">
+          <textarea
+            readOnly
+            rows={2}
+            value={draft.bcc || "(none selected)"}
+            className="readonly-input"
+          />
+          <button
+            type="button"
+            className="ghost-btn"
+            disabled={!draft.bcc}
+            onClick={() => {
+              void handleCopy("bcc", draft.bcc);
+            }}
+          >
+            {copied === "bcc" ? "Copied" : "Copy"}
           </button>
         </div>
       </label>
@@ -115,7 +211,7 @@ export function VendorEmailPanel({ request }: VendorEmailPanelProps) {
         <span>Body</span>
         <textarea
           readOnly
-          rows={12}
+          rows={10}
           value={draft.body}
           className="readonly-input email-body"
         />
@@ -137,17 +233,22 @@ export function VendorEmailPanel({ request }: VendorEmailPanelProps) {
           onClick={() => {
             void handleCopy(
               "all",
-              `To: ${draft.to}\nSubject: ${draft.subject}\n\n${draft.body}`,
+              [
+                draft.to ? `To: ${draft.to}` : null,
+                draft.bcc ? `BCC: ${draft.bcc}` : null,
+                `Subject: ${draft.subject}`,
+                "",
+                draft.body,
+              ]
+                .filter((line) => line !== null)
+                .join("\n"),
             );
           }}
         >
           {copied === "all" ? "All copied" : "Copy all"}
         </button>
-        {draft.to ? (
-          <a
-            className="ghost-btn mailto-btn"
-            href={`mailto:${draft.to.replace(/;\s*/g, ",")}?subject=${encodeURIComponent(draft.subject)}&body=${encodeURIComponent(draft.body)}`}
-          >
+        {draft.to || draft.bcc ? (
+          <a className="ghost-btn mailto-btn" href={mailtoHref}>
             Open in email
           </a>
         ) : null}
@@ -159,44 +260,6 @@ export function VendorEmailPanel({ request }: VendorEmailPanelProps) {
           Copied {copied}.
         </p>
       ) : null}
-
-      <details className="vendor-directory">
-        <summary>Full vendor contact list</summary>
-        <div className="vendor-table-wrap">
-          <table className="vendor-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Company</th>
-                <th>Contact</th>
-                <th>Phone</th>
-                <th>Fax</th>
-                <th>Email</th>
-              </tr>
-            </thead>
-            <tbody>
-              {VENDORS.map((entry) => (
-                <tr key={entry.id}>
-                  <td>{entry.customerId}</td>
-                  <td>
-                    <button
-                      type="button"
-                      className="link-btn"
-                      onClick={() => setVendorId(entry.id)}
-                    >
-                      {entry.companyName}
-                    </button>
-                  </td>
-                  <td>{entry.contactName}</td>
-                  <td>{entry.phone || "—"}</td>
-                  <td>{entry.fax || "—"}</td>
-                  <td>{vendorEmailTo(entry)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </details>
     </section>
   );
 }
