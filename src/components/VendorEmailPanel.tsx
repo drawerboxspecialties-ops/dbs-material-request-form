@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { buildVendorEmailDraft } from "@/lib/emailDraft";
 import type { MaterialRequest } from "@/lib/types";
 import { VENDORS, findVendorById, vendorEmailTo } from "@/lib/vendors";
@@ -19,6 +19,9 @@ async function copyText(value: string) {
 export function VendorEmailPanel({ request }: VendorEmailPanelProps) {
   const [toVendorId, setToVendorId] = useState("");
   const [bccVendorIds, setBccVendorIds] = useState<string[]>([]);
+  const [subject, setSubject] = useState("Material Request");
+  const [body, setBody] = useState("");
+  const [edited, setEdited] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,6 +46,18 @@ export function VendorEmailPanel({ request }: VendorEmailPanelProps) {
     [request, toVendor, bccVendors],
   );
 
+  useEffect(() => {
+    setEdited(false);
+    setToVendorId("");
+    setBccVendorIds([]);
+  }, [request.id]);
+
+  useEffect(() => {
+    if (edited) return;
+    setSubject(draft.subject);
+    setBody(draft.body);
+  }, [draft.subject, draft.body, edited]);
+
   function toggleBcc(vendorId: string) {
     setBccVendorIds((current) =>
       current.includes(vendorId)
@@ -57,6 +72,12 @@ export function VendorEmailPanel({ request }: VendorEmailPanelProps) {
 
   function clearBcc() {
     setBccVendorIds([]);
+  }
+
+  function resetDraft() {
+    setEdited(false);
+    setSubject(draft.subject);
+    setBody(draft.body);
   }
 
   async function handleCopy(label: string, value: string) {
@@ -74,14 +95,14 @@ export function VendorEmailPanel({ request }: VendorEmailPanelProps) {
 
   const mailtoHref = useMemo(() => {
     const params = new URLSearchParams();
-    params.set("subject", draft.subject);
-    params.set("body", draft.body);
+    params.set("subject", subject);
+    params.set("body", body);
     if (draft.bcc) {
       params.set("bcc", draft.bcc.replace(/;\s*/g, ","));
     }
     const to = draft.to.replace(/;\s*/g, ",");
     return `mailto:${to}?${params.toString()}`;
-  }, [draft]);
+  }, [draft.to, draft.bcc, subject, body]);
 
   return (
     <section className="vendor-email-panel">
@@ -89,8 +110,8 @@ export function VendorEmailPanel({ request }: VendorEmailPanelProps) {
         <div>
           <h3>Vendor email</h3>
           <p>
-            Select one or more vendors for BCC, then copy subject/body into your
-            email.
+            Select vendors, edit subject/body if needed, then open in your email
+            app.
           </p>
         </div>
       </div>
@@ -193,62 +214,36 @@ export function VendorEmailPanel({ request }: VendorEmailPanelProps) {
 
       <label className="field">
         <span>Subject</span>
-        <div className="copy-row">
-          <input readOnly value={draft.subject} className="readonly-input" />
-          <button
-            type="button"
-            className="ghost-btn"
-            onClick={() => {
-              void handleCopy("subject", draft.subject);
-            }}
-          >
-            {copied === "subject" ? "Copied" : "Copy"}
-          </button>
-        </div>
+        <input
+          value={subject}
+          onChange={(e) => {
+            setEdited(true);
+            setSubject(e.target.value);
+          }}
+        />
       </label>
 
       <label className="field">
         <span>Body</span>
         <textarea
-          readOnly
           rows={10}
-          value={draft.body}
-          className="readonly-input email-body"
+          value={body}
+          className="email-body"
+          onChange={(e) => {
+            setEdited(true);
+            setBody(e.target.value);
+          }}
         />
       </label>
 
       <div className="vendor-email-actions">
-        <button
-          type="button"
-          className="ghost-btn"
-          onClick={() => {
-            void handleCopy("body", draft.body);
-          }}
-        >
-          {copied === "body" ? "Body copied" : "Copy body"}
-        </button>
-        <button
-          type="button"
-          className="submit-btn"
-          onClick={() => {
-            void handleCopy(
-              "all",
-              [
-                draft.to ? `To: ${draft.to}` : null,
-                draft.bcc ? `BCC: ${draft.bcc}` : null,
-                `Subject: ${draft.subject}`,
-                "",
-                draft.body,
-              ]
-                .filter((line) => line !== null)
-                .join("\n"),
-            );
-          }}
-        >
-          {copied === "all" ? "All copied" : "Copy all"}
-        </button>
+        {edited ? (
+          <button type="button" className="ghost-btn" onClick={resetDraft}>
+            Reset draft
+          </button>
+        ) : null}
         {draft.to || draft.bcc ? (
-          <a className="ghost-btn mailto-btn" href={mailtoHref}>
+          <a className="submit-btn mailto-btn" href={mailtoHref}>
             Open in email
           </a>
         ) : null}
