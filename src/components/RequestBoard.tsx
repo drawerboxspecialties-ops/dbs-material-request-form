@@ -10,6 +10,7 @@ import {
   ManagerResponseSummary,
   type ManagerReplyPayload,
 } from "@/components/ManagerReplyForm";
+import { VendorEmailPanel } from "@/components/VendorEmailPanel";
 import {
   AVAILABILITY_LABELS,
   PRODUCT_TYPE_LABELS,
@@ -464,6 +465,8 @@ export function RequestBoard({
                 }}
               />
             ) : null}
+
+            <VendorEmailPanel request={selected} />
 
             <ul className="line-items">
               {selected.items.map((item) => {
